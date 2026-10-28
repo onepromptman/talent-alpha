@@ -1,0 +1,54 @@
+{
+  "verdicts": [
+    {
+      "id": "warn-100201",
+      "tier": "S",
+      "openness": "H", "role_fit": "H", "product_fit": "M", "region_fit": "H", "size_fit": "H", "stage_fit": "H",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Reliability Engineer", "Automation Test Engineer"],
+      "why": "Named layoff at Kestrel Automation Works affects 85 people in the same metro as Solstice Yards, an hours-old signal.",
+      "hook": "Saw the news about Kestrel's layoff and wanted to reach out directly rather than wait for a posting.",
+      "edge": "The equity grant refreshes every year and relocation covers moving costs plus weeks of temporary housing, which should land well for someone leaving a comparable hardware employer."
+    },
+    {
+      "id": "fund-77a1c9",
+      "tier": "A",
+      "openness": "M", "role_fit": "H", "product_fit": "H", "region_fit": "H", "size_fit": "M", "stage_fit": "M",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Test Engineer", "Reliability Engineer"],
+      "why": "Verity Sensing Corp is cutting manufacturing and test staff after a down round, a sensor-array maker in the same metro as Solstice Yards.",
+      "hook": "Saw the news about Verity's restructuring, reaching out before a formal layoff posts.",
+      "edge": "The 1% starting equity grant could offset some of the uncertainty of joining right after a down round."
+    },
+    {
+      "id": "warn-100207",
+      "tier": "A",
+      "openness": "H", "role_fit": "M", "product_fit": "M", "region_fit": "M", "size_fit": "H", "stage_fit": "M",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Manufacturing Engineer", "Process Engineer"],
+      "why": "Redline Fabrication's full site closure affects 40 people with direct craft overlap in precision fabrication.",
+      "hook": "Reference the Redline closure and the shared craft of precision fabrication work.",
+      "edge": "Relocation support and a flexible hybrid schedule could matter for someone commuting from Boulder."
+    },
+    {
+      "id": "fund-88b2f4",
+      "tier": "S",
+      "openness": "H", "role_fit": "H", "product_fit": "M", "region_fit": "H", "size_fit": "H", "stage_fit": "H",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Reliability Engineer"],
+      "why": "Palisade Robotics missed a funding milestone and is reportedly restructuring, an early but real signal at a comparable robotics company.",
+      "hook": "Open with the funding news gently, framing it as a heads-up rather than an assumption.",
+      "edge": "A dedicated mentor for the first 90 days could reassure someone moving away from a distressed startup."
+    },
+    {
+      "id": "warn-100215",
+      "tier": "B",
+      "openness": "M", "role_fit": "M", "product_fit": "M", "region_fit": "H", "size_fit": "L", "stage_fit": "M",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Manufacturing Engineer"],
+      "why": "Ironhaven's 22-person layoff is small but named and dated, with plausible craft overlap in precision machining.",
+      "hook": "Reference the Ironhaven layoff plainly; the craft overlap is real but not a perfect match.",
+      "edge": "A $2,000 annual learning stipend could help someone reskilling from machining toward sensor test work."
+    }
+  ]
+}

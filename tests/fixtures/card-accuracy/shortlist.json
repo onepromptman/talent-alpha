@@ -1,0 +1,49 @@
+{
+  "opportunities": [
+    {
+      "id": "warn-100201",
+      "company": "Kestrel Automation Works",
+      "event_type": "layoff",
+      "functions": ["Reliability Engineer", "Manufacturing Engineer"],
+      "location": "Denver, CO",
+      "score": 88,
+      "why": "Named layoff at a directly comparable automation employer in the same metro."
+    },
+    {
+      "id": "warn-100207",
+      "company": "Redline Fabrication",
+      "event_type": "shutdown",
+      "functions": ["Manufacturing Engineer", "Test Engineer"],
+      "location": "Boulder, CO",
+      "score": 74,
+      "why": "Full site closure in a nearby metro, craft overlap plausible."
+    },
+    {
+      "id": "fund-77a1c9",
+      "company": "Verity Sensing Corp",
+      "event_type": "funding_distress",
+      "functions": ["Test Engineer", "Reliability Engineer"],
+      "location": "Denver, CO",
+      "score": 80,
+      "why": "Sensor-array maker in the same metro naming manufacturing and test cuts."
+    },
+    {
+      "id": "fund-88b2f4",
+      "company": "Palisade Robotics",
+      "event_type": "funding_distress",
+      "functions": ["Reliability Engineer"],
+      "location": "Fort Collins, CO",
+      "score": 63,
+      "why": "Regional robotics startup with early funding-distress signal, not yet a confirmed cut."
+    },
+    {
+      "id": "warn-100215",
+      "company": "Ironhaven Machine Co",
+      "event_type": "layoff",
+      "functions": ["Manufacturing Engineer"],
+      "location": "Aurora, CO",
+      "score": 69,
+      "why": "Smaller named layoff, adjacent craft, same metro."
+    }
+  ]
+}

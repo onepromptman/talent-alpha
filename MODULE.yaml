@@ -1,0 +1,30 @@
+module: talent-alpha
+description: A nightly-or-on-demand scan of layoff/WARN notices and funding-distress news that scores every signal against your open role and emails or renders a single ranked card: who just became reachable, why now, your outreach hook, and your concrete edge. A fast scanner shortlists candidates, then two independent judges (an Advocate and a Skeptic) argue each one before it is reconciled onto the card, so no single model grades its own work. Ships both as a standalone n8n workflow (for a real scheduled nightly run) and as this Cowork/Claude Code plugin (for the identical pipeline run on demand, in-session). Ships in the talentai marketplace beside the other three recruiting kits, and installs on its own.
+version: 1.3.0
+stages: [pull, dedupe, shortlist, judge, reconcile, render]
+
+core:
+  skeleton: KIT-CORE.md
+  output: skills/talent-alpha/references/00_SHARED_CORE.md
+
+tiers:
+  Filed: a government WARN Act filing (source_name "WARN Firehose"); highest confidence, dated, official, employer-attributed
+  Reported: a dated news or search result about funding distress (source_name "Web Search" or "Perplexity Search"); single-source until corroborated
+  Company-stated: a fact from the user's own saved profile, inside COMPANY_PROFILE; never independently verified
+
+agents:
+  scanner: {role: executor, verifier: critic}
+  advocate: {role: executor, verifier: critic}
+  skeptic: {role: executor, verifier: critic}
+  critic: {role: verifier, template: critic}
+
+supersedes:
+  - talent-alpha (published separately as onepromptman/talent-alpha)
+  - the talent-alpha kit in a private plugins repo
+
+evals:
+  commands:
+    - python -m pytest -q
+  cases: evals
+  post_run:
+    card-accuracy: python skills/talent-alpha/scripts/validate_card.py check --card {workspace}/out/card.content.json --pull {workspace}/fixtures --min-shown 4 --max-shown 10

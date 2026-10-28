@@ -1,0 +1,74 @@
+[
+  {
+    "event_id": "warn-100201",
+    "published_at": "2026-09-05T20:00:00Z",
+    "title": "Kestrel Automation Works WARN layoff -- 85 affected",
+    "snippet": "Denver, CO -- Industrial Automation -- 85 employees affected",
+    "source_name": "WARN Firehose",
+    "source_url": "https://warnfirehose.example.com/records/100201",
+    "company": "Kestrel Automation Works",
+    "location": "Denver, CO",
+    "event_type": "layoff",
+    "employees_affected": 85
+  },
+  {
+    "event_id": "warn-100207",
+    "published_at": "2026-09-06T08:00:00Z",
+    "title": "Redline Fabrication site closure -- 40 affected",
+    "snippet": "Boulder, CO -- Precision Fabrication -- 40 employees affected, full site closure",
+    "source_name": "WARN Firehose",
+    "source_url": "https://warnfirehose.example.com/records/100207",
+    "company": "Redline Fabrication",
+    "location": "Boulder, CO",
+    "event_type": "shutdown",
+    "employees_affected": 40
+  },
+  {
+    "event_id": "fund-77a1c9",
+    "published_at": "2026-09-06T20:00:00Z",
+    "title": "Verity Sensing Corp cuts staff after down round",
+    "snippet": "Verity Sensing Corp, a Denver sensor-array maker, confirmed a restructuring following a down round; headcount reductions expected across manufacturing and test.",
+    "source_name": "Web Search",
+    "source_url": "https://news.example.com/verity-sensing-restructuring",
+    "company": "Verity Sensing Corp",
+    "location": "Denver, CO",
+    "event_type": "funding_distress",
+    "employees_affected": null
+  },
+  {
+    "event_id": "fund-88b2f4",
+    "published_at": "2026-09-05T08:00:00Z",
+    "title": "Palisade Robotics reportedly missed a funding milestone",
+    "snippet": "Palisade Robotics, a Fort Collins robotics startup, is reportedly restructuring after missing a funding milestone tied to its Series B extension.",
+    "source_name": "Web Search",
+    "source_url": "https://news.example.com/palisade-robotics-down-round",
+    "company": "Palisade Robotics",
+    "location": "Fort Collins, CO",
+    "event_type": "funding_distress",
+    "employees_affected": null
+  },
+  {
+    "event_id": "warn-100215",
+    "published_at": "2026-09-07T08:00:00Z",
+    "title": "Ironhaven Machine Co WARN layoff -- 22 affected",
+    "snippet": "Aurora, CO -- Precision Machining -- 22 employees affected",
+    "source_name": "WARN Firehose",
+    "source_url": "https://warnfirehose.example.com/records/100215",
+    "company": "Ironhaven Machine Co",
+    "location": "Aurora, CO",
+    "event_type": "layoff",
+    "employees_affected": 22
+  },
+  {
+    "event_id": "warn-099888",
+    "published_at": "2026-08-20T00:00:00Z",
+    "title": "Thistledown Hardware WARN layoff -- 15 affected",
+    "snippet": "Denver, CO -- Test Equipment -- 15 employees affected",
+    "source_name": "WARN Firehose",
+    "source_url": "https://warnfirehose.example.com/records/099888",
+    "company": "Thistledown Hardware",
+    "location": "Denver, CO",
+    "event_type": "layoff",
+    "employees_affected": 15
+  }
+]

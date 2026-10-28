@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Talent Alpha overnight card content",
+  "description": "The single content shape scripts/render.py consumes. Produced by scripts/render.py reconcile from the scanner shortlist plus both judges' verdicts; never authored by an agent directly.",
+  "type": "object",
+  "required": ["run", "candidates"],
+  "additionalProperties": false,
+  "properties": {
+    "run": {
+      "type": "object",
+      "required": ["author", "run_date", "company_name", "role_title", "role_location", "scanned_count", "window_note"],
+      "additionalProperties": false,
+      "properties": {
+        "author": {"type": "string", "description": "Recipient name; 'Your name' if unset in the profile."},
+        "run_date": {"type": "string", "description": "Human-readable run timestamp, e.g. an RFC-1123 string."},
+        "company_name": {"type": "string"},
+        "role_title": {"type": "string"},
+        "role_location": {"type": "string"},
+        "scanned_count": {"type": "integer", "minimum": 0, "description": "Total candidates entering reconcile, shown plus held."},
+        "window_note": {"type": "string", "description": "e.g. '72h window'."}
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "company", "location", "employees_affected", "event_type",
+          "event_age_label", "age_days", "titles", "tier", "bands",
+          "wildcard", "why", "hook", "edge", "held", "hold_reason",
+          "source_name", "source_url"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "description": "Copied verbatim from the trusted raw event. Never invented."},
+          "company": {"type": "string"},
+          "location": {"type": "string"},
+          "employees_affected": {"type": ["integer", "null"]},
+          "event_type": {"type": "string", "enum": ["layoff", "shutdown", "funding_distress"]},
+          "event_age_label": {"type": "string", "description": "'today', '1d ago', or 'Nd ago'."},
+          "age_days": {"type": "integer", "minimum": 0},
+          "titles": {"type": "array", "items": {"type": "string"}},
+          "tier": {"type": "string", "enum": ["S", "A", "B", "C", "HELD"]},
+          "bands": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 6,
+            "items": {"type": "string", "enum": ["H", "M", "L"]},
+            "description": "Order: openness, role_fit, product_fit, region_fit, size_fit, stage_fit."
+          },
+          "wildcard": {
+            "type": "object",
+            "required": ["fired", "axis_index", "bridge"],
+            "additionalProperties": false,
+            "properties": {
+              "fired": {"type": "boolean"},
+              "axis_index": {"type": "integer", "minimum": -1, "maximum": 5},
+              "bridge": {"type": "string", "description": "6 words or fewer. Empty when fired is false."}
+            }
+          },
+          "why": {"type": "string", "description": "One sentence, why-now."},
+          "hook": {"type": "string", "description": "One quotable first-person outreach line."},
+          "edge": {"type": "string", "description": "One sentence citing a concrete COMPANY_PROFILE detail, or empty string."},
+          "held": {"type": "boolean"},
+          "hold_reason": {"type": "string", "description": "Empty when held is false."},
+          "source_name": {"type": "string"},
+          "source_url": {"type": "string"}
+        }
+      }
+    }
+  }
+}

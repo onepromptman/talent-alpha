@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# Secrets and runtime data: never committed (also when this module is published on its own)
+.env
+.env.*
+!.env.example
+*-profile.md
+talent-alpha-state.json
+runs/
+out/
+output/
+roles/
+scratch/
+evals/results/
+# synthetic fixtures are inputs, not runtime state; they must survive a clone
+!evals/fixtures/*-profile.md
+!tests/fixtures/*-profile.md
+!evals/fixtures/talent-alpha-state.json

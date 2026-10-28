@@ -1,0 +1,54 @@
+{
+  "verdicts": [
+    {
+      "id": "warn-100201",
+      "tier": "A",
+      "openness": "H", "role_fit": "M", "product_fit": "M", "region_fit": "H", "size_fit": "M", "stage_fit": "H",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Reliability Engineer", "Automation Test Engineer"],
+      "why": "Kestrel's 85-person layoff is fresh and directly comparable, though the filing does not say which functions were cut.",
+      "hook": "Reference the Kestrel news directly; specifics on affected roles are not yet public.",
+      "edge": "Relocation support could matter if this candidate is not already Denver-based, though comp specifics were not independently verified."
+    },
+    {
+      "id": "fund-77a1c9",
+      "tier": "B",
+      "openness": "M", "role_fit": "M", "product_fit": "M", "region_fit": "H", "size_fit": "L", "stage_fit": "M",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Test Engineer", "Reliability Engineer"],
+      "why": "Verity's cuts are reported but not yet a confirmed completed layoff, so openness is uncertain.",
+      "hook": "Frame this as a heads-up conversation, not an assumption that they are already looking.",
+      "edge": ""
+    },
+    {
+      "id": "warn-100207",
+      "tier": "A",
+      "openness": "M", "role_fit": "M", "product_fit": "M", "region_fit": "M", "size_fit": "H", "stage_fit": "M",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Manufacturing Engineer", "Process Engineer"],
+      "why": "The 40-person closure at Redline is confirmed and dated; fabrication skill transfers reasonably to sensor manufacturing.",
+      "hook": "Keep the outreach specific to the Redline closure rather than a generic layoff line.",
+      "edge": "Relocation support is a real point but only matters if this candidate is not already local to Denver."
+    },
+    {
+      "id": "fund-88b2f4",
+      "tier": "C",
+      "openness": "L", "role_fit": "M", "product_fit": "M", "region_fit": "L", "size_fit": "M", "stage_fit": "L",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Reliability Engineer"],
+      "why": "This is a single, single-source funding rumor with no confirmed staffing action; too thin to act on yet.",
+      "hook": "",
+      "edge": ""
+    },
+    {
+      "id": "warn-100215",
+      "tier": "B",
+      "openness": "M", "role_fit": "M", "product_fit": "L", "region_fit": "H", "size_fit": "M", "stage_fit": "M",
+      "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
+      "titles": ["Manufacturing Engineer"],
+      "why": "Ironhaven's layoff is confirmed but the craft match to reliability engineering is a stretch beyond machining basics.",
+      "hook": "Keep expectations calibrated; this is an adjacent-craft outreach, not a direct match.",
+      "edge": ""
+    }
+  ]
+}

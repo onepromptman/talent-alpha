@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "seen_events": {
+    "warn-099888": {"first_seen_at": "2026-08-21T06:00:00Z", "company": "Thistledown Hardware"}
+  },
+  "last_run_at": "2026-08-21T06:00:12Z"
+}
