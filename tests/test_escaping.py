@@ -21,9 +21,13 @@ import pytest
 MODULE_ROOT = Path(__file__).resolve().parent.parent
 SKILL_ROOT = MODULE_ROOT / "skills" / "talent-alpha"
 TEMPLATE = SKILL_ROOT / "references" / "templates" / "overnight_card.template.html"
-EXAMPLE_CONTENT = SKILL_ROOT / "references" / "content-schemas" / "card.example-content.json"
-WORKFLOWS = [MODULE_ROOT / "n8n" / "talent-alpha.workflow.json",
-             MODULE_ROOT / "n8n" / "talent-alpha-demo.workflow.json"]
+EXAMPLE_CONTENT = (
+    SKILL_ROOT / "references" / "content-schemas" / "card.example-content.json"
+)
+WORKFLOWS = [
+    MODULE_ROOT / "n8n" / "talent-alpha.workflow.json",
+    MODULE_ROOT / "n8n" / "talent-alpha-demo.workflow.json",
+]
 
 EVIL = '"><img src=x onerror=alert(1)>'
 # a live tag, or a quote that closes an attribute and opens an event handler
@@ -42,7 +46,7 @@ def test_real_and_demo_workflows_share_one_render_node():
 
 def test_render_py_escapes_feed_and_model_text_and_attributes(tmp_path):
     content = json.loads(EXAMPLE_CONTENT.read_text(encoding="utf-8"))
-    hero, second, third, held = content["candidates"]
+    hero, second, _third, held = content["candidates"]
     hero["company"] = "Acme" + EVIL
     hero["bands"] = ["H", EVIL, "M", "H", "H", "H"]
     hero["wildcard"] = {"fired": True, "axis_index": EVIL, "bridge": EVIL}
@@ -55,9 +59,23 @@ def test_render_py_escapes_feed_and_model_text_and_attributes(tmp_path):
     src.write_text(json.dumps(content), encoding="utf-8")
     out = tmp_path / "card.html"
     proc = subprocess.run(
-        [sys.executable, "scripts/render.py", "render", "--template", str(TEMPLATE),
-         "--content", str(src), "--out", str(out), "--strict"],
-        cwd=str(SKILL_ROOT), capture_output=True, text=True)
+        [
+            sys.executable,
+            "scripts/render.py",
+            "render",
+            "--template",
+            str(TEMPLATE),
+            "--content",
+            str(src),
+            "--out",
+            str(out),
+            "--strict",
+        ],
+        cwd=str(SKILL_ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     assert proc.returncode == 0, proc.stderr
     doc = out.read_text(encoding="utf-8")
     assert not MARKUP.search(doc), "markup from a feed or a judge reached the card"
@@ -69,16 +87,28 @@ def test_render_py_escapes_feed_and_model_text_and_attributes(tmp_path):
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 @pytest.mark.parametrize("workflow", WORKFLOWS, ids=lambda p: p.name)
 def test_n8n_render_node_escapes_every_slot(workflow):
-    config = {"openRole": {"title": "Engineer" + EVIL, "location": "Austin" + EVIL},
-              "companyProfile": "Example Co" + EVIL + " -- profile"}
+    config = {
+        "openRole": {"title": "Engineer" + EVIL, "location": "Austin" + EVIL},
+        "companyProfile": "Example Co" + EVIL + " -- profile",
+    }
 
     def item(company, tier, held=False):
-        return {"company": company + EVIL, "location": "Austin" + EVIL, "employees_affected": 12,
-                "event_type": "layoff" + EVIL, "event_age_label": "today", "titles": ["T" + EVIL],
-                "tier": tier, "bands": ["H", EVIL, "M", "M", "M", "M"],
-                "wildcard": {"fired": True, "axis_index": EVIL, "bridge": EVIL},
-                "why": EVIL, "hook": EVIL, "edge": EVIL, "held": held,
-                "hold_reason": "judges disagreed sharply" + EVIL}
+        return {
+            "company": company + EVIL,
+            "location": "Austin" + EVIL,
+            "employees_affected": 12,
+            "event_type": "layoff" + EVIL,
+            "event_age_label": "today",
+            "titles": ["T" + EVIL],
+            "tier": tier,
+            "bands": ["H", EVIL, "M", "M", "M", "M"],
+            "wildcard": {"fired": True, "axis_index": EVIL, "bridge": EVIL},
+            "why": EVIL,
+            "hook": EVIL,
+            "edge": EVIL,
+            "held": held,
+            "hold_reason": "judges disagreed sharply" + EVIL,
+        }
 
     items = [item("Hero", "S"), item("Second", "A"), item("Held", "HELD", held=True)]
     harness = (
@@ -89,8 +119,12 @@ def test_n8n_render_node_escapes_every_slot(workflow):
         "const out = (function(){\n" + _render_node_js(workflow) + "\n})();\n"
         "process.stdout.write(out[0].json.renderedHtml);\n"
     )
-    proc = subprocess.run(["node", "-e", harness], capture_output=True, text=True, timeout=30)
+    proc = subprocess.run(
+        ["node", "-e", harness], capture_output=True, text=True, timeout=30, check=False
+    )
     assert proc.returncode == 0, proc.stderr
     doc = proc.stdout
     assert "Hero&quot;&gt;&lt;img" in doc and "Held&quot;&gt;&lt;img" in doc
-    assert not MARKUP.search(doc), "markup from a feed, a judge or Config reached the emailed card"
+    assert not MARKUP.search(doc), (
+        "markup from a feed, a judge or Config reached the emailed card"
+    )

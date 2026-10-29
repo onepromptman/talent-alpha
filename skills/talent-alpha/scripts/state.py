@@ -47,15 +47,19 @@ UNVERIFIED: whether the working folder (and therefore this file) actually
 persists between two separate invocations of a native scheduled task is not
 something this plugin has been able to confirm on this platform. Test it
 before relying on it: run the pipeline twice on different days and confirm
-the second run's card omits the first run's events. See the README's
-"State and scheduling" section.
+the second run's card omits the first run's events. See "State and scheduling" in
+docs/how-it-works.md.
 """
+
 import argparse
 import datetime
 import json
 import os
-import sys
 import tempfile
+
+import runlog
+
+log = runlog.get_logger("talent-alpha.state")
 
 SCHEMA_VERSION = 1
 
@@ -66,7 +70,11 @@ def now_iso():
 
 def load_state(path):
     if not os.path.exists(path):
-        return {"schema_version": SCHEMA_VERSION, "seen_events": {}, "last_run_at": None}
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "seen_events": {},
+            "last_run_at": None,
+        }
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     data.setdefault("schema_version", SCHEMA_VERSION)
@@ -102,7 +110,12 @@ def cmd_dedupe(args):
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(fresh, f, indent=2)
         f.write("\n")
-    print(f"dedupe: {len(events)} pulled, {skipped} already seen, {len(fresh)} new -> {args.out}")
+    print(
+        f"dedupe: {len(events)} pulled, {skipped} already seen, {len(fresh)} new -> {args.out}"
+    )
+    log.info(
+        "dedupe: %d pulled, %d already seen, %d new", len(events), skipped, len(fresh)
+    )
 
 
 def cmd_record(args):
@@ -123,7 +136,9 @@ def cmd_record(args):
 
     # Prune anything older than max_age_days so the file does not grow
     # without bound across months of nightly runs.
-    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=args.max_age_days)
+    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        days=args.max_age_days
+    )
     pruned = 0
     for event_id in list(seen.keys()):
         try:
@@ -138,8 +153,16 @@ def cmd_record(args):
 
     state["last_run_at"] = stamp
     write_state_atomic(args.state, state)
-    print(f"record: {len(candidates)} candidates marked seen, {pruned} pruned "
-          f"(older than {args.max_age_days}d), {len(seen)} total in state -> {args.state}")
+    log.info(
+        "record: %d marked seen, %d pruned, %d in state",
+        len(candidates),
+        pruned,
+        len(seen),
+    )
+    print(
+        f"record: {len(candidates)} candidates marked seen, {pruned} pruned "
+        f"(older than {args.max_age_days}d), {len(seen)} total in state -> {args.state}"
+    )
 
 
 def cmd_show(args):
@@ -150,24 +173,52 @@ def cmd_show(args):
     print(f"last_run_at: {state['last_run_at']}")
     print(f"seen_events: {len(seen)}")
     if args.verbose:
-        for event_id, entry in sorted(seen.items(), key=lambda kv: kv[1].get("first_seen_at", "")):
-            print(f"  {entry.get('first_seen_at', '?')}  {event_id}  {entry.get('company', '')}")
+        for event_id, entry in sorted(
+            seen.items(), key=lambda kv: kv[1].get("first_seen_at", "")
+        ):
+            print(
+                f"  {entry.get('first_seen_at', '?')}  {event_id}  {entry.get('company', '')}"
+            )
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    d = sub.add_parser("dedupe", help="Filter raw pulled events against the state file.")
-    d.add_argument("--events", required=True, help="Path to raw_events.json (array of normalized events).")
+    d = sub.add_parser(
+        "dedupe", help="Filter raw pulled events against the state file."
+    )
+    d.add_argument(
+        "--events",
+        required=True,
+        help="Path to raw_events.json (array of normalized events).",
+    )
     d.add_argument("--state", required=True, help="Path to talent-alpha-state.json.")
-    d.add_argument("--out", required=True, help="Where to write the filtered (new-only) events array.")
+    d.add_argument(
+        "--out",
+        required=True,
+        help="Where to write the filtered (new-only) events array.",
+    )
     d.set_defaults(func=cmd_dedupe)
 
-    r = sub.add_parser("record", help="Mark this run's reconciled candidates as seen; prune old entries.")
-    r.add_argument("--candidates", required=True, help="Path to reconciled content JSON (or a bare array of candidates).")
+    r = sub.add_parser(
+        "record",
+        help="Mark this run's reconciled candidates as seen; prune old entries.",
+    )
+    r.add_argument(
+        "--candidates",
+        required=True,
+        help="Path to reconciled content JSON (or a bare array of candidates).",
+    )
     r.add_argument("--state", required=True, help="Path to talent-alpha-state.json.")
-    r.add_argument("--max-age-days", type=int, default=30, help="Prune entries older than this many days (default 30).")
+    r.add_argument(
+        "--max-age-days",
+        type=int,
+        default=30,
+        help="Prune entries older than this many days (default 30).",
+    )
     r.set_defaults(func=cmd_record)
 
     s = sub.add_parser("show", help="Print a summary of the current state file.")
@@ -176,9 +227,11 @@ def main(argv=None):
     s.set_defaults(func=cmd_show)
 
     args = ap.parse_args(argv)
+    runlog.setup()
+    log.debug("state.py %s", args.cmd)
     args.func(args)
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    runlog.run(main)

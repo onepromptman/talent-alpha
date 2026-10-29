@@ -1,6 +1,10 @@
 __pycache__/
 *.pyc
 .DS_Store
+.venv/
+node_modules/
+.pytest_cache/
+.ruff_cache/
 
 # Secrets and runtime data: never committed (also when this module is published on its own)
 .env

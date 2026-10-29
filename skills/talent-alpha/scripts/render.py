@@ -31,6 +31,7 @@ Usage (see skills/talent-alpha/SKILL.md for the full run):
         --content content.json --out card.html --strict
     python3 render.py verify --doc card.html
 """
+
 import argparse
 import datetime
 import html
@@ -39,25 +40,55 @@ import math
 import re
 import sys
 
+import runlog
+
+log = runlog.get_logger("talent-alpha.render")
+
 TIER_RANK = {"S": 3, "A": 2, "B": 1, "C": 0}
 TIER_BY_RANK = ["C", "B", "A", "S"]
-TIER_COLOR = {"S": "#C8202E", "A": "#1B3A2C", "B": "#8A6B22", "HELD": "rgba(20,23,28,.45)"}
+TIER_COLOR = {
+    "S": "#C8202E",
+    "A": "#1B3A2C",
+    "B": "#8A6B22",
+    "HELD": "rgba(20,23,28,.45)",
+}
 AXES = ["openness", "role_fit", "product_fit", "region_fit", "size_fit", "stage_fit"]
 
 BANNED_FILLER = ["TBD", "N/A", "Data not available", "NOT_FOUND"]
 
 REQUIRED_RUN_KEYS = [
-    "author", "run_date", "company_name", "role_title", "role_location",
-    "scanned_count", "window_note",
+    "author",
+    "run_date",
+    "company_name",
+    "role_title",
+    "role_location",
+    "scanned_count",
+    "window_note",
 ]
 REQUIRED_CANDIDATE_KEYS = [
-    "id", "company", "location", "employees_affected", "event_type",
-    "event_age_label", "age_days", "titles", "tier", "bands", "wildcard",
-    "why", "hook", "edge", "held", "hold_reason", "source_name", "source_url",
+    "id",
+    "company",
+    "location",
+    "employees_affected",
+    "event_type",
+    "event_age_label",
+    "age_days",
+    "titles",
+    "tier",
+    "bands",
+    "wildcard",
+    "why",
+    "hook",
+    "edge",
+    "held",
+    "hold_reason",
+    "source_name",
+    "source_url",
 ]
 
 
 # ---------------------------------------------------------------- utilities
+
 
 def load(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -111,6 +142,7 @@ def age_label_of(days):
 
 
 # --------------------------------------------------------------- join (trust boundary)
+
 
 def event_problems(e):
     """Why this raw event is not fit to score. Empty list means it is.
@@ -184,38 +216,52 @@ def cmd_join(args):
         if base is None:
             dropped.append(oid)
             continue
-        trusted.append({
-            "id": o["id"],
-            "company": base.get("company") or o.get("company", ""),
-            "event_type": base.get("event_type") or o.get("event_type", ""),
-            "functions": o.get("functions", []),
-            "location": base.get("location") or o.get("location", ""),
-            "employees_affected": base.get("employees_affected"),
-            "published_at": base.get("published_at"),
-            "score": o.get("score"),
-            "why": o.get("why", ""),
-            "source_name": base.get("source_name", ""),
-            "source_url": base.get("source_url", ""),
-        })
+        trusted.append(
+            {
+                "id": o["id"],
+                "company": base.get("company") or o.get("company", ""),
+                "event_type": base.get("event_type") or o.get("event_type", ""),
+                "functions": o.get("functions", []),
+                "location": base.get("location") or o.get("location", ""),
+                "employees_affected": base.get("employees_affected"),
+                "published_at": base.get("published_at"),
+                "score": o.get("score"),
+                "why": o.get("why", ""),
+                "source_name": base.get("source_name", ""),
+                "source_url": base.get("source_url", ""),
+            }
+        )
 
     dump(args.out, trusted)
-    msg = (f"join: {len(opportunities)} shortlisted, {len(dropped)} dropped (id not in trusted batch), "
-           f"{len(unusable)} dropped (event failed batch checks), {len(trusted)} trusted -> {args.out}")
+    msg = (
+        f"join: {len(opportunities)} shortlisted, {len(dropped)} dropped (id not in trusted batch), "
+        f"{len(unusable)} dropped (event failed batch checks), {len(trusted)} trusted -> {args.out}"
+    )
     if dropped:
         msg += f"\n  invented ids: {dropped}"
     for eid, problems in rejected.items():
         msg += f"\n  unusable event {eid}: " + "; ".join(problems)
     print(msg)
+    log.info(
+        "join: %d shortlisted, %d trusted, %d dropped",
+        len(opportunities),
+        len(trusted),
+        len(dropped) + len(unusable),
+    )
     if opportunities and not trusted:
         # A quiet night is an empty SHORTLIST, and 2.2 already stops there. A
         # non-empty shortlist where nothing survives is a data fault: fail loud
         # rather than hand the next step an empty batch to render around.
-        print("join: a shortlist arrived but nothing survived the trust boundary. "
-              "Fix the pull step; do not render a card from this run.", file=sys.stderr)
+        print(
+            "join: a shortlist arrived but nothing survived the trust boundary. "
+            "Fix the pull step; do not render a card from this run.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 
 # --------------------------------------------------------------- reconcile
+
 
 def cmd_reconcile(args):
     trusted = load(args.trusted)
@@ -234,28 +280,32 @@ def cmd_reconcile(args):
         rank_a = TIER_RANK[a["tier"]]
         rank_s = TIER_RANK[s["tier"]] if s else rank_a
         blended = js_round((rank_a + rank_s) / 2)
-        finals.append({
-            "id": a["id"],
-            "company": t["company"],
-            "location": t["location"],
-            "employees_affected": t.get("employees_affected"),
-            "event_type": t["event_type"],
-            "event_age_label": age_label_of(age_days),
-            "age_days": age_days,
-            "titles": a.get("titles", []),
-            "tier": TIER_BY_RANK[blended],
-            "_rank": blended,
-            "_disagree": abs(rank_a - rank_s) >= 3,
-            "bands": [a.get(axis, "M") for axis in AXES],
-            "wildcard": a.get("wildcard", {"fired": False, "axis_index": -1, "bridge": ""}),
-            "why": a.get("why", ""),
-            "hook": a.get("hook", ""),
-            "edge": a.get("edge", ""),
-            "held": False,
-            "hold_reason": "",
-            "source_name": t.get("source_name", ""),
-            "source_url": t.get("source_url", ""),
-        })
+        finals.append(
+            {
+                "id": a["id"],
+                "company": t["company"],
+                "location": t["location"],
+                "employees_affected": t.get("employees_affected"),
+                "event_type": t["event_type"],
+                "event_age_label": age_label_of(age_days),
+                "age_days": age_days,
+                "titles": a.get("titles", []),
+                "tier": TIER_BY_RANK[blended],
+                "_rank": blended,
+                "_disagree": abs(rank_a - rank_s) >= 3,
+                "bands": [a.get(axis, "M") for axis in AXES],
+                "wildcard": a.get(
+                    "wildcard", {"fired": False, "axis_index": -1, "bridge": ""}
+                ),
+                "why": a.get("why", ""),
+                "hook": a.get("hook", ""),
+                "edge": a.get("edge", ""),
+                "held": False,
+                "hold_reason": "",
+                "source_name": t.get("source_name", ""),
+                "source_url": t.get("source_url", ""),
+            }
+        )
 
     finals.sort(key=lambda f: (-f["_rank"], f["age_days"]))
 
@@ -274,7 +324,9 @@ def cmd_reconcile(args):
     content = {
         "run": {
             "author": args.author,
-            "run_date": datetime.datetime.now(datetime.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT"),
+            "run_date": datetime.datetime.now(datetime.timezone.utc).strftime(
+                "%a, %d %b %Y %H:%M:%S GMT"
+            ),
             "company_name": args.company_name,
             "role_title": args.role_title,
             "role_location": args.role_location,
@@ -286,10 +338,14 @@ def cmd_reconcile(args):
     dump(args.out, content)
     shown = sum(1 for f in finals if not f["held"])
     held = sum(1 for f in finals if f["held"])
-    print(f"reconcile: {len(finals)} candidates, {shown} shown, {held} held -> {args.out}")
+    print(
+        f"reconcile: {len(finals)} candidates, {shown} shown, {held} held -> {args.out}"
+    )
+    log.info("reconcile: %d candidates, %d shown, %d held", len(finals), shown, held)
 
 
 # --------------------------------------------------------------- render
+
 
 def element_span(doc, open_start):
     tag_match = re.match(r"<([a-zA-Z0-9]+)", doc[open_start:])
@@ -305,7 +361,9 @@ def element_span(doc, open_start):
 
 
 def fill_slot(doc, slot, content):
-    pattern = re.compile(r'<[a-zA-Z0-9]+[^>]*data-slot="' + re.escape(slot) + r'"[^>]*>')
+    pattern = re.compile(
+        r'<[a-zA-Z0-9]+[^>]*data-slot="' + re.escape(slot) + r'"[^>]*>'
+    )
     m = pattern.search(doc)
     if not m:
         return doc
@@ -336,14 +394,20 @@ def source_html(it):
     if not SAFE_LINK.match(url):
         # only http(s) becomes a link; a javascript: or data: URL from a feed never does
         return f'<div class="srcline">Source: {esc(name)} (link withheld: not an http(s) URL)</div>'
-    return (f'<div class="srcline">Source: '
-            f'<a href="{esc_attr(url)}" rel="noopener noreferrer">{esc(name)}</a></div>')
+    return (
+        f'<div class="srcline">Source: '
+        f'<a href="{esc_attr(url)}" rel="noopener noreferrer">{esc(name)}</a></div>'
+    )
 
 
 def render_card(it):
     wc = it.get("wildcard") or {}
     wc_attr = f' data-wc="{esc_attr(wc["axis_index"])}"' if wc.get("fired") else ""
-    bridge_chip = f'<span class="bridge">◆ {esc(wc.get("bridge", ""))}</span>' if wc.get("fired") else ""
+    bridge_chip = (
+        f'<span class="bridge">◆ {esc(wc.get("bridge", ""))}</span>'
+        if wc.get("fired")
+        else ""
+    )
     titles = "".join(f"<span>{esc(t)}</span>" for t in it.get("titles", []))
     return (
         '<div class="card">'
@@ -355,9 +419,7 @@ def render_card(it):
         f'<div><div class="pl why">Why now</div><div class="ptext">{esc(it["why"])}</div></div>'
         f'<div><div class="pl hook">The hook</div><div class="ptext">{esc(it["hook"])}</div></div>'
         f'<div><div class="pl edge">The edge</div><div class="ptext dim">{esc(it["edge"] or "none yet")}</div></div>'
-        "</div>"
-        + source_html(it)
-        + "</div>"
+        "</div>" + source_html(it) + "</div>"
     )
 
 
@@ -370,15 +432,22 @@ def validate_content(content, strict):
     for i, c in enumerate(content.get("candidates", [])):
         for key in REQUIRED_CANDIDATE_KEYS:
             if key not in c:
-                problems.append(f"candidates[{i}].{key} missing (id={c.get('id', '?')})")
+                problems.append(
+                    f"candidates[{i}].{key} missing (id={c.get('id', '?')})"
+                )
         if "wildcard" in c:
             for key in ("fired", "axis_index", "bridge"):
                 if key not in c["wildcard"]:
-                    problems.append(f"candidates[{i}].wildcard.{key} missing (id={c.get('id', '?')})")
+                    problems.append(
+                        f"candidates[{i}].wildcard.{key} missing (id={c.get('id', '?')})"
+                    )
     if problems and strict:
-        print("STRICT RENDER FAILED. Nothing written. Route this back to the producing "
-              "agent (scanner/advocate/skeptic) or the reconcile step as a patch, never "
-              "hand-edit the output.", file=sys.stderr)
+        print(
+            "STRICT RENDER FAILED. Nothing written. Route this back to the producing "
+            "agent (scanner/advocate/skeptic) or the reconcile step as a patch, never "
+            "hand-edit the output.",
+            file=sys.stderr,
+        )
         for p in problems:
             print(f"  - {p}", file=sys.stderr)
     return problems
@@ -397,7 +466,9 @@ def cmd_render(args):
     doc = fill_slot(doc, "author", esc(run["author"]))
     doc = fill_slot(doc, "run-date", esc(run["run_date"]))
     doc = fill_slot(doc, "role-name", esc(run["role_title"]))
-    doc = fill_slot(doc, "role-meta", esc(run["company_name"] + " · " + run["role_location"]))
+    doc = fill_slot(
+        doc, "role-meta", esc(run["company_name"] + " · " + run["role_location"])
+    )
 
     all_candidates = content["candidates"]
     shown = [c for c in all_candidates if not c["held"]]
@@ -416,36 +487,71 @@ def cmd_render(args):
     if held:
         tier_counts_html += f' · <b style="color:var(--gray)">{len(held)} held</b>'
     doc = fill_slot(doc, "tier-counts", tier_counts_html)
-    doc = fill_slot(doc, "run-id", f'{len(shown) + len(held)} signals scanned · {esc(run["window_note"])}')
+    doc = fill_slot(
+        doc,
+        "run-id",
+        f"{len(shown) + len(held)} signals scanned · {esc(run['window_note'])}",
+    )
 
     held_summary = (
-        f'{len(held)} item' + ("s" if len(held) != 1 else "") + " held for review (judge disagreement or overflow): "
-        + "; ".join(f'{h["company"]} ({h["hold_reason"] or "disagreement"})' for h in held)
-    ) if held else "clean"
+        (
+            f"{len(held)} item"
+            + ("s" if len(held) != 1 else "")
+            + " held for review (judge disagreement or overflow): "
+            + "; ".join(
+                f"{h['company']} ({h['hold_reason'] or 'disagreement'})" for h in held
+            )
+        )
+        if held
+        else "clean"
+    )
 
     if not shown:
-        summary = f"No auto-cleared movements, but {held_summary}" if held else \
-            "No movements cleared the bar this run. Next scan will pick up where this one left off."
+        summary = (
+            f"No auto-cleared movements, but {held_summary}"
+            if held
+            else "No movements cleared the bar this run. Next scan will pick up where this one left off."
+        )
         doc = fill_slot(doc, "c-summary", esc(summary))
         # Honest empty state: remove the hero block rather than leave it full
         # of unfilled "-" placeholders (see references/00_SHARED_CORE.md 6).
-        doc = re.sub(r"<!-- HERO:START -->.*?<!-- HERO:END -->", "", doc, flags=re.DOTALL)
-        doc = fill_slot(doc, "foot-left", "Talent Alpha · overnight brief · WARN + funding-distress categories")
-        doc = fill_slot(doc, "foot-right", "Sources travel untrusted · nothing sends automatically")
+        doc = re.sub(
+            r"<!-- HERO:START -->.*?<!-- HERO:END -->", "", doc, flags=re.DOTALL
+        )
+        doc = fill_slot(
+            doc,
+            "foot-left",
+            "Talent Alpha · overnight brief · WARN + funding-distress categories",
+        )
+        doc = fill_slot(
+            doc, "foot-right", "Sources travel untrusted · nothing sends automatically"
+        )
     else:
         hero, rest = shown[0], shown[1:]
         chip_color = TIER_COLOR.get(hero["tier"], TIER_COLOR["HELD"])
-        tag_text = esc(hero["tier"] + " · " + hero["event_type"] + " " + hero["event_age_label"])
+        tag_text = esc(
+            hero["tier"] + " · " + hero["event_type"] + " " + hero["event_age_label"]
+        )
         if hero["tier"] == "S":
             hero_chip = f'<span class="chipS">{tag_text}</span>'
         else:
             hero_chip = f'<span class="chipS" style="background:none;border:1px solid {chip_color};color:{chip_color}">{tag_text}</span>'
-        doc = doc.replace('<span class="chipS" data-slot="hero-tag">-</span>', hero_chip)
+        doc = doc.replace(
+            '<span class="chipS" data-slot="hero-tag">-</span>', hero_chip
+        )
         doc = fill_slot(doc, "hero-company", esc(hero["company"]))
         doc = fill_slot(doc, "hero-loc", esc(loc_line(hero)))
-        doc = fill_slot(doc, "hero-titles", "".join(f"<span>{esc(t)}</span>" for t in hero.get("titles", [])))
+        doc = fill_slot(
+            doc,
+            "hero-titles",
+            "".join(f"<span>{esc(t)}</span>" for t in hero.get("titles", [])),
+        )
         doc = fill_slot(doc, "hero-why", esc(hero["why"]))
-        doc = fill_slot(doc, "hero-edge", esc(hero["edge"] or "Not enough signal for a leverage read yet."))
+        doc = fill_slot(
+            doc,
+            "hero-edge",
+            esc(hero["edge"] or "Not enough signal for a leverage read yet."),
+        )
         doc = fill_slot(doc, "hero-hook", f'"{esc(hero["hook"])}"')
         doc = fill_slot(doc, "hero-source", source_html(hero))
         wc = hero.get("wildcard") or {}
@@ -455,18 +561,41 @@ def cmd_render(args):
             f'data-bands="{esc_attr(",".join(hero["bands"]))}" data-tier="{esc_attr(hero["tier"])}" data-size="150"{wc_attr}',
         )
         cards_html = "".join(render_card(it) for it in rest)
-        doc = doc.replace("<!-- CARD:START -->\n<!-- CARD:END -->", "<!-- CARD:START -->" + cards_html + "<!-- CARD:END -->")
+        doc = doc.replace(
+            "<!-- CARD:START -->\n<!-- CARD:END -->",
+            "<!-- CARD:START -->" + cards_html + "<!-- CARD:END -->",
+        )
         doc = fill_slot(doc, "c-summary", esc(held_summary))
-        doc = fill_slot(doc, "foot-left", "Talent Alpha · overnight brief · WARN + funding-distress categories")
-        doc = fill_slot(doc, "foot-right", "Sources travel untrusted · nothing sends automatically")
+        doc = fill_slot(
+            doc,
+            "foot-left",
+            "Talent Alpha · overnight brief · WARN + funding-distress categories",
+        )
+        doc = fill_slot(
+            doc, "foot-right", "Sources travel untrusted · nothing sends automatically"
+        )
 
     with open(args.out, "w", encoding="utf-8") as f:
         f.write(doc)
-    print(f"render: wrote {args.out} ({len(shown)} shown, {len(held)} held)"
-          + (f" -- {len(problems)} schema warning(s), non-strict" if problems and not args.strict else ""))
+    log.info(
+        "render: wrote %s (%d shown, %d held, %d schema warning(s))",
+        args.out,
+        len(shown),
+        len(held),
+        len(problems),
+    )
+    print(
+        f"render: wrote {args.out} ({len(shown)} shown, {len(held)} held)"
+        + (
+            f" -- {len(problems)} schema warning(s), non-strict"
+            if problems and not args.strict
+            else ""
+        )
+    )
 
 
 # --------------------------------------------------------------- verify
+
 
 def cmd_verify(args):
     with open(args.doc, "r", encoding="utf-8") as f:
@@ -480,8 +609,11 @@ def cmd_verify(args):
         findings.append("em dash (—) present")
     unfilled = re.findall(r'data-slot="([a-zA-Z0-9_-]+)">-<', doc)
     if unfilled:
-        findings.append(f"unfilled slot placeholder(s) still showing '-': {sorted(set(unfilled))}")
+        findings.append(
+            f"unfilled slot placeholder(s) still showing '-': {sorted(set(unfilled))}"
+        )
 
+    log.info("verify: %s, %d finding(s)", args.doc, len(findings))
     if findings:
         print(f"VERIFY FAILED: {args.doc}", file=sys.stderr)
         for finding in findings:
@@ -492,17 +624,25 @@ def cmd_verify(args):
 
 # --------------------------------------------------------------- main
 
+
 def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    j = sub.add_parser("join", help="Trust-boundary join: scanner shortlist against the raw trusted batch.")
+    j = sub.add_parser(
+        "join",
+        help="Trust-boundary join: scanner shortlist against the raw trusted batch.",
+    )
     j.add_argument("--raw", required=True)
     j.add_argument("--shortlist", required=True)
     j.add_argument("--out", required=True)
     j.set_defaults(func=cmd_join)
 
-    r = sub.add_parser("reconcile", help="Blend advocate + skeptic verdicts into content JSON.")
+    r = sub.add_parser(
+        "reconcile", help="Blend advocate + skeptic verdicts into content JSON."
+    )
     r.add_argument("--trusted", required=True)
     r.add_argument("--advocate", required=True)
     r.add_argument("--skeptic", required=True)
@@ -510,8 +650,15 @@ def main(argv=None):
     r.add_argument("--company-name", required=True)
     r.add_argument("--role-title", required=True)
     r.add_argument("--role-location", required=True)
-    r.add_argument("--min-shown", type=int, default=4, help="Top N always shown (default 4).")
-    r.add_argument("--max-shown", type=int, default=10, help="Hard cap on shown candidates (default 10).")
+    r.add_argument(
+        "--min-shown", type=int, default=4, help="Top N always shown (default 4)."
+    )
+    r.add_argument(
+        "--max-shown",
+        type=int,
+        default=10,
+        help="Hard cap on shown candidates (default 10).",
+    )
     r.add_argument("--out", required=True)
     r.set_defaults(func=cmd_reconcile)
 
@@ -519,17 +666,26 @@ def main(argv=None):
     d.add_argument("--template", required=True)
     d.add_argument("--content", required=True)
     d.add_argument("--out", required=True)
-    d.add_argument("--strict", action="store_true", help="Fail (exit 1, write nothing) on any missing required field.")
+    d.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail (exit 1, write nothing) on any missing required field.",
+    )
     d.set_defaults(func=cmd_render)
 
-    v = sub.add_parser("verify", help="Scan a rendered card for leftover placeholders and banned filler.")
+    v = sub.add_parser(
+        "verify",
+        help="Scan a rendered card for leftover placeholders and banned filler.",
+    )
     v.add_argument("--doc", required=True)
     v.set_defaults(func=cmd_verify)
 
     args = ap.parse_args(argv)
+    runlog.setup()
+    log.debug("render.py %s", args.cmd)
     args.func(args)
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    runlog.run(main)

@@ -104,14 +104,18 @@ CARD_TEXT_FIELDS = ("why", "hook", "edge")
 
 MONEY_RE = re.compile(r"\$\s?\d[\d,]*(?:\.\d+)?\s?[KkMm]?")
 PERCENT_RE = re.compile(r"\d+(?:\.\d+)?\s?%")
-BIGINT_RE = re.compile(r"(?<![\d.$])\d{2,3}(?:,\d{3})+(?![\d%])|(?<![\d.$,])\d{2,}(?![\d%,])")
+BIGINT_RE = re.compile(
+    r"(?<![\d.$])\d{2,3}(?:,\d{3})+(?![\d%])|(?<![\d.$,])\d{2,}(?![\d%,])"
+)
 YEAR_RE = re.compile(r"^(19|20)\d{2}$")
 WORD5_RE = re.compile(r"[A-Za-z]{5,}")
 
 FILED_SOURCE = "WARN Firehose"
 REPORTED_SOURCE = "Web Search"
-WRONG_LABEL_FOR_FILED = re.compile(r"\breported\b", re.I)
-WRONG_LABEL_FOR_REPORTED = re.compile(r"\b(WARN filing|WARN Act filing|officially filed)\b", re.I)
+WRONG_LABEL_FOR_FILED = re.compile(r"\breported\b", re.IGNORECASE)
+WRONG_LABEL_FOR_REPORTED = re.compile(
+    r"\b(WARN filing|WARN Act filing|officially filed)\b", re.IGNORECASE
+)
 
 
 # ----------------------------------------------------------------------------- utilities
@@ -135,7 +139,9 @@ def norm_num(tok: str) -> str:
     return str(int(val)) if val == int(val) else str(val)
 
 
-def claim_numbers(text: str, patterns: tuple = (MONEY_RE, PERCENT_RE, BIGINT_RE)) -> set[str]:
+def claim_numbers(
+    text: str, patterns: tuple = (MONEY_RE, PERCENT_RE, BIGINT_RE)
+) -> set[str]:
     """Money, percent, and 2+-digit integer tokens in `text`, normalized. A bare four-digit
     year (2020, not 20.20 or a comma-grouped figure) is furniture, not a claim.
 
@@ -164,7 +170,7 @@ def js_round(x: float) -> int:
 
 
 def leverage_from_profile(text: str) -> str | None:
-    m = re.search(r"^\s*leverage:\s*(.+)$", text, re.M)
+    m = re.search(r"^\s*leverage:\s*(.+)$", text, re.MULTILINE)
     if not m:
         return None
     raw = m.group(1).strip()
@@ -200,8 +206,12 @@ def check_card(
     findings: list[str] = []
     warnings: list[str] = []
 
-    if not isinstance(card.get("run"), dict) or not isinstance(card.get("candidates"), list):
-        findings.append("card JSON is not the reconcile shape: missing `run` or `candidates`")
+    if not isinstance(card.get("run"), dict) or not isinstance(
+        card.get("candidates"), list
+    ):
+        findings.append(
+            "card JSON is not the reconcile shape: missing `run` or `candidates`"
+        )
         return findings, warnings, {"count": 0, "shown": 0, "held": 0, "top_tier": None}
 
     adv_verdicts = advocate.get("verdicts", [])
@@ -210,7 +220,9 @@ def check_card(
     skp_by_id = {v["id"]: v for v in skp_verdicts if "id" in v}
 
     if not adv_verdicts or not skp_verdicts:
-        findings.append("advocate_verdicts.json or skeptic_verdicts.json has no verdicts")
+        findings.append(
+            "advocate_verdicts.json or skeptic_verdicts.json has no verdicts"
+        )
 
     # A judge cannot be caught skipping a candidate from the card alone (render.py falls
     # back to the advocate's own tier silently); check the raw verdict files instead.
@@ -221,12 +233,16 @@ def check_card(
                 "advocate's own tier, which the rendered card cannot reveal)"
             )
 
-    if adv_verdicts and skp_verdicts:
-        if json.dumps(adv_verdicts, sort_keys=True) == json.dumps(skp_verdicts, sort_keys=True):
-            findings.append(
-                "advocate_verdicts.json and skeptic_verdicts.json are byte-identical; "
-                "the two judges must not mirror each other"
-            )
+    if (
+        adv_verdicts
+        and skp_verdicts
+        and json.dumps(adv_verdicts, sort_keys=True)
+        == json.dumps(skp_verdicts, sort_keys=True)
+    ):
+        findings.append(
+            "advocate_verdicts.json and skeptic_verdicts.json are byte-identical; "
+            "the two judges must not mirror each other"
+        )
 
     leverage_pool: set[str] = claim_numbers(leverage) if leverage else set()
     leverage_words = words5(leverage) if leverage else set()
@@ -265,20 +281,28 @@ def check_card(
         prev_key = sort_key
 
         if idx >= max_shown:
-            exp_held, exp_reason, exp_tier = True, f"beyond the top {max_shown} this run", "HELD"
+            exp_held, exp_reason, exp_tier = (
+                True,
+                f"beyond the top {max_shown} this run",
+                "HELD",
+            )
         elif disagree and idx >= min_shown:
             exp_held, exp_reason, exp_tier = True, "judges disagreed sharply", "HELD"
         else:
             exp_held, exp_reason, exp_tier = False, "", TIER_BY_RANK[blended]
 
         if c.get("held") != exp_held:
-            findings.append(f"candidate {cid}: held={c.get('held')!r}, expected {exp_held!r}")
+            findings.append(
+                f"candidate {cid}: held={c.get('held')!r}, expected {exp_held!r}"
+            )
         if c.get("hold_reason") != exp_reason:
             findings.append(
                 f"candidate {cid}: hold_reason={c.get('hold_reason')!r}, expected {exp_reason!r}"
             )
         if c.get("tier") != exp_tier:
-            findings.append(f"candidate {cid}: tier={c.get('tier')!r}, expected {exp_tier!r}")
+            findings.append(
+                f"candidate {cid}: tier={c.get('tier')!r}, expected {exp_tier!r}"
+            )
 
         event = raw_events.get(c.get("id"))
         if event is None:
@@ -404,7 +428,11 @@ def check_card(
     shown = sum(1 for c in candidates if not c.get("held"))
     held = sum(1 for c in candidates if c.get("held"))
     top_tier = candidates[0]["tier"] if candidates else None
-    return findings, warnings, {"count": len(candidates), "shown": shown, "held": held, "top_tier": top_tier}
+    return (
+        findings,
+        warnings,
+        {"count": len(candidates), "shown": shown, "held": held, "top_tier": top_tier},
+    )
 
 
 # ----------------------------------------------------------------------------- CLI
@@ -435,7 +463,10 @@ def cmd_check(args: argparse.Namespace) -> int:
 
     events_path = pull_dir / "raw_events.json"
     if not events_path.exists():
-        print(f"validate_card: no raw_events.json under --pull {pull_dir}", file=sys.stderr)
+        print(
+            f"validate_card: no raw_events.json under --pull {pull_dir}",
+            file=sys.stderr,
+        )
         return 2
     raw_events = {e["event_id"]: e for e in load(events_path)}
 
@@ -454,7 +485,13 @@ def cmd_check(args: argparse.Namespace) -> int:
         seen_events = load(state_path).get("seen_events", {})
 
     findings, warnings, stats = check_card(
-        card, advocate, skeptic, raw_events, leverage, args.min_shown, args.max_shown,
+        card,
+        advocate,
+        skeptic,
+        raw_events,
+        leverage,
+        args.min_shown,
+        args.max_shown,
         seen_events,
     )
 
@@ -477,9 +514,15 @@ def cmd_check(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="validate_card.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    c = sub.add_parser("check", help="Validate a reconciled card against its fixture pull.")
+    c = sub.add_parser(
+        "check", help="Validate a reconciled card against its fixture pull."
+    )
     c.add_argument("--card", required=True, help="Path to the reconciled content.json.")
-    c.add_argument("--pull", required=True, help="Path to the fixture dir (raw_events.json, onepromptman-profile.md).")
+    c.add_argument(
+        "--pull",
+        required=True,
+        help="Path to the fixture dir (raw_events.json, onepromptman-profile.md).",
+    )
     c.add_argument("--min-shown", type=int, default=4)
     c.add_argument("--max-shown", type=int, default=10)
     c.set_defaults(fn=cmd_check)

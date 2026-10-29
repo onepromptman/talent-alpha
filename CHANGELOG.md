@@ -9,12 +9,25 @@ All notable changes to Talent Alpha. Format loosely follows
 
 ### Changed
 
+- The README follows the house shape in about 600 words: who it is for, the tags, where
+  it runs and what each path needs, a diagram, a first run, your data, settings, what to
+  do when something goes wrong, and a short section for engineers. The detail it carried
+  moves to `docs/how-it-works.md`. In the standalone edition the "Built from source"
+  note moves to the foot.
+- The n8n Data Table rename note (`r04_events_seen` to `talent_alpha_events_seen`)
+  sits near the top of the README, before the first run.
+- The engine scripts log through `runlog.py`: a run id on every line, `LOG_LEVEL`,
+  `LOG_FORMAT=json` and `LOG_FILE`. What they print for you is unchanged. An error is
+  logged with its message and traceback, and `runlog.py` says so.
+- ruff lint and format applied, with a `ruff.toml` that keeps the scripts Python
+  3.9-compatible; scripts with a shebang are executable.
+- The standalone edition ships a CI workflow, `SECURITY.md` and `CONTRIBUTING.md`.
 - **The n8n dedupe Data Table is now `talent_alpha_events_seen`** (it carried an
   internal prototype name). An existing install must create the table under the new
   name, or rename it, before the next scheduled run.
 - The demo workflow's pinned fictional company is renamed, and no example names an
   industry the kit does not target.
-- Licensed MIT, Copyright (c) 2026 OnePromptMan, one licence for the whole marketplace;
+- Licensed MIT, Copyright (c) 2026 OnePromptMan, one license for the whole marketplace;
   install lines point at the `talent-alpha` marketplace.
 
 ### Fixed

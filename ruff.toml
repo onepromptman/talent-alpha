@@ -1,0 +1,4 @@
+# Ruff settings: ruff's defaults plus one line. The scripts run on the user's own python3,
+# which is 3.9 on a stock Mac, so ruff lints for 3.9 and never rewrites to newer syntax.
+# Each module carries the same file, so its standalone edition lints the same way.
+target-version = "py39"

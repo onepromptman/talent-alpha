@@ -15,8 +15,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 MODULE_ROOT = Path(__file__).resolve().parent.parent
 SKILL_ROOT = MODULE_ROOT / "skills" / "talent-alpha"
 SCRIPTS = SKILL_ROOT / "scripts"
@@ -27,7 +25,11 @@ EXAMPLE_CONTENT = REF / "content-schemas" / "card.example-content.json"
 
 def run(cmd, cwd):
     return subprocess.run(
-        [sys.executable, *cmd], cwd=str(cwd), capture_output=True, text=True
+        [sys.executable, *cmd],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
@@ -45,19 +47,27 @@ def test_shipped_example_renders_strict_and_verifies_clean(tmp_path):
     out = tmp_path / "overnight_card.html"
     render = run(
         [
-            "scripts/render.py", "render",
-            "--template", str(TEMPLATE),
-            "--content", str(EXAMPLE_CONTENT),
-            "--out", str(out),
+            "scripts/render.py",
+            "render",
+            "--template",
+            str(TEMPLATE),
+            "--content",
+            str(EXAMPLE_CONTENT),
+            "--out",
+            str(out),
             "--strict",
         ],
         cwd=SKILL_ROOT,
     )
-    assert render.returncode == 0, f"render --strict failed:\n{render.stdout}\n{render.stderr}"
+    assert render.returncode == 0, (
+        f"render --strict failed:\n{render.stdout}\n{render.stderr}"
+    )
     assert out.is_file(), f"render reported success but wrote nothing to {out}"
 
     verify = run(["scripts/render.py", "verify", "--doc", str(out)], cwd=SKILL_ROOT)
-    assert verify.returncode == 0, f"verify failed on a clean render:\n{verify.stdout}\n{verify.stderr}"
+    assert verify.returncode == 0, (
+        f"verify failed on a clean render:\n{verify.stdout}\n{verify.stderr}"
+    )
 
 
 def test_render_strict_fails_closed_on_missing_field(tmp_path):
@@ -72,15 +82,21 @@ def test_render_strict_fails_closed_on_missing_field(tmp_path):
     out = tmp_path / "should-not-exist.html"
     render = run(
         [
-            "scripts/render.py", "render",
-            "--template", str(TEMPLATE),
-            "--content", str(broken),
-            "--out", str(out),
+            "scripts/render.py",
+            "render",
+            "--template",
+            str(TEMPLATE),
+            "--content",
+            str(broken),
+            "--out",
+            str(out),
             "--strict",
         ],
         cwd=SKILL_ROOT,
     )
-    assert render.returncode == 1, "render --strict should fail closed on a missing required field"
+    assert render.returncode == 1, (
+        "render --strict should fail closed on a missing required field"
+    )
     assert not out.is_file(), "render --strict must write nothing to --out on failure"
 
 
@@ -103,10 +119,14 @@ def test_state_dedupe_then_record_round_trip(tmp_path):
     first_out = tmp_path / "new_events.json"
     dedupe1 = run(
         [
-            "scripts/state.py", "dedupe",
-            "--events", str(events_path),
-            "--state", str(state_path),
-            "--out", str(first_out),
+            "scripts/state.py",
+            "dedupe",
+            "--events",
+            str(events_path),
+            "--state",
+            str(state_path),
+            "--out",
+            str(first_out),
         ],
         cwd=SKILL_ROOT,
     )
@@ -116,18 +136,23 @@ def test_state_dedupe_then_record_round_trip(tmp_path):
         "first dedupe against an empty state should pass every event through"
     )
 
-    candidates = {"candidates": [
-        {"id": "warn-1", "company": "Northwind Robotics"},
-        {"id": "warn-2", "company": "Halcyon Silicon"},
-    ]}
+    candidates = {
+        "candidates": [
+            {"id": "warn-1", "company": "Northwind Robotics"},
+            {"id": "warn-2", "company": "Halcyon Silicon"},
+        ]
+    }
     candidates_path = tmp_path / "content.json"
     candidates_path.write_text(json.dumps(candidates), encoding="utf-8")
 
     record = run(
         [
-            "scripts/state.py", "record",
-            "--candidates", str(candidates_path),
-            "--state", str(state_path),
+            "scripts/state.py",
+            "record",
+            "--candidates",
+            str(candidates_path),
+            "--state",
+            str(state_path),
         ],
         cwd=SKILL_ROOT,
     )
@@ -139,10 +164,14 @@ def test_state_dedupe_then_record_round_trip(tmp_path):
     second_out = tmp_path / "new_events_2.json"
     dedupe2 = run(
         [
-            "scripts/state.py", "dedupe",
-            "--events", str(events_path),
-            "--state", str(state_path),
-            "--out", str(second_out),
+            "scripts/state.py",
+            "dedupe",
+            "--events",
+            str(events_path),
+            "--state",
+            str(state_path),
+            "--out",
+            str(second_out),
         ],
         cwd=SKILL_ROOT,
     )
@@ -167,14 +196,19 @@ def test_state_record_is_atomic_write(tmp_path):
     )
     record = run(
         [
-            "scripts/state.py", "record",
-            "--candidates", str(candidates_path),
-            "--state", str(state_path),
+            "scripts/state.py",
+            "record",
+            "--candidates",
+            str(candidates_path),
+            "--state",
+            str(state_path),
         ],
         cwd=SKILL_ROOT,
     )
     assert record.returncode == 0, record.stdout + record.stderr
-    leftovers = [p.name for p in tmp_path.iterdir() if p.name.startswith(".talent-alpha-state-")]
+    leftovers = [
+        p.name for p in tmp_path.iterdir() if p.name.startswith(".talent-alpha-state-")
+    ]
     assert not leftovers, f"atomic write left a stray temp file: {leftovers}"
 
 

@@ -54,24 +54,42 @@ ROLE_LOCATION = "Denver, CO"
 
 def run(cmd, cwd):
     return subprocess.run(
-        [sys.executable, *cmd], cwd=str(cwd), capture_output=True, text=True
+        [sys.executable, *cmd],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
-def _reconcile(tmp_path, trusted, advocate_path, skeptic_path, min_shown=4, max_shown=10):
+def _reconcile(
+    tmp_path, trusted, advocate_path, skeptic_path, min_shown=4, max_shown=10
+):
     content_path = tmp_path / "content.json"
     proc = run(
         [
-            "scripts/render.py", "reconcile",
-            "--trusted", str(trusted),
-            "--advocate", str(advocate_path),
-            "--skeptic", str(skeptic_path),
-            "--author", AUTHOR,
-            "--company-name", COMPANY,
-            "--role-title", ROLE_TITLE,
-            "--role-location", ROLE_LOCATION,
-            "--min-shown", str(min_shown), "--max-shown", str(max_shown),
-            "--out", str(content_path),
+            "scripts/render.py",
+            "reconcile",
+            "--trusted",
+            str(trusted),
+            "--advocate",
+            str(advocate_path),
+            "--skeptic",
+            str(skeptic_path),
+            "--author",
+            AUTHOR,
+            "--company-name",
+            COMPANY,
+            "--role-title",
+            ROLE_TITLE,
+            "--role-location",
+            ROLE_LOCATION,
+            "--min-shown",
+            str(min_shown),
+            "--max-shown",
+            str(max_shown),
+            "--out",
+            str(content_path),
         ],
         cwd=SKILL_ROOT,
     )
@@ -90,10 +108,14 @@ def _build_shaped_run(tmp_path, skeptic_verdicts=None, min_shown=4, max_shown=10
     new_events = tmp_path / "new_events.json"
     dedupe = run(
         [
-            "scripts/state.py", "dedupe",
-            "--events", str(RAW_EVENTS),
-            "--state", str(STATE_FIXTURE),
-            "--out", str(new_events),
+            "scripts/state.py",
+            "dedupe",
+            "--events",
+            str(RAW_EVENTS),
+            "--state",
+            str(STATE_FIXTURE),
+            "--out",
+            str(new_events),
         ],
         cwd=SKILL_ROOT,
     )
@@ -102,26 +124,39 @@ def _build_shaped_run(tmp_path, skeptic_verdicts=None, min_shown=4, max_shown=10
     trusted = tmp_path / "trusted_candidates.json"
     join = run(
         [
-            "scripts/render.py", "join",
-            "--raw", str(new_events),
-            "--shortlist", str(SHORTLIST_FIXTURE),
-            "--out", str(trusted),
+            "scripts/render.py",
+            "join",
+            "--raw",
+            str(new_events),
+            "--shortlist",
+            str(SHORTLIST_FIXTURE),
+            "--out",
+            str(trusted),
         ],
         cwd=SKILL_ROOT,
     )
     assert join.returncode == 0, join.stdout + join.stderr
 
     advocate_path = tmp_path / "advocate_verdicts.json"
-    advocate_path.write_text(ADVOCATE_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    advocate_path.write_text(
+        ADVOCATE_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8"
+    )
 
     skeptic_path = tmp_path / "skeptic_verdicts.json"
     if skeptic_verdicts is None:
-        skeptic_path.write_text(SKEPTIC_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+        skeptic_path.write_text(
+            SKEPTIC_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8"
+        )
     else:
         skeptic_path.write_text(json.dumps(skeptic_verdicts), encoding="utf-8")
 
     content_path = _reconcile(
-        tmp_path, trusted, advocate_path, skeptic_path, min_shown=min_shown, max_shown=max_shown
+        tmp_path,
+        trusted,
+        advocate_path,
+        skeptic_path,
+        min_shown=min_shown,
+        max_shown=max_shown,
     )
     return content_path, advocate_path, skeptic_path
 
@@ -129,9 +164,12 @@ def _build_shaped_run(tmp_path, skeptic_verdicts=None, min_shown=4, max_shown=10
 def _validate(content_path, extra_args=()):
     return run(
         [
-            "scripts/validate_card.py", "check",
-            "--card", str(content_path),
-            "--pull", str(EVAL_FIXTURES),
+            "scripts/validate_card.py",
+            "check",
+            "--card",
+            str(content_path),
+            "--pull",
+            str(EVAL_FIXTURES),
             *extra_args,
         ],
         cwd=SKILL_ROOT,
@@ -147,10 +185,14 @@ def test_dedupe_drops_exactly_the_seeded_event(tmp_path):
     out = tmp_path / "new_events.json"
     proc = run(
         [
-            "scripts/state.py", "dedupe",
-            "--events", str(RAW_EVENTS),
-            "--state", str(STATE_FIXTURE),
-            "--out", str(out),
+            "scripts/state.py",
+            "dedupe",
+            "--events",
+            str(RAW_EVENTS),
+            "--state",
+            str(STATE_FIXTURE),
+            "--out",
+            str(out),
         ],
         cwd=SKILL_ROOT,
     )
@@ -167,16 +209,28 @@ def test_join_drops_nothing_from_the_shaped_shortlist(tmp_path):
     new_events = tmp_path / "new_events.json"
     run(
         [
-            "scripts/state.py", "dedupe",
-            "--events", str(RAW_EVENTS), "--state", str(STATE_FIXTURE), "--out", str(new_events),
+            "scripts/state.py",
+            "dedupe",
+            "--events",
+            str(RAW_EVENTS),
+            "--state",
+            str(STATE_FIXTURE),
+            "--out",
+            str(new_events),
         ],
         cwd=SKILL_ROOT,
     )
     trusted = tmp_path / "trusted_candidates.json"
     proc = run(
         [
-            "scripts/render.py", "join",
-            "--raw", str(new_events), "--shortlist", str(SHORTLIST_FIXTURE), "--out", str(trusted),
+            "scripts/render.py",
+            "join",
+            "--raw",
+            str(new_events),
+            "--shortlist",
+            str(SHORTLIST_FIXTURE),
+            "--out",
+            str(trusted),
         ],
         cwd=SKILL_ROOT,
     )
@@ -198,9 +252,15 @@ def test_validate_card_passes_on_the_shaped_positive_fixture(tmp_path):
     html = tmp_path / "overnight_card.html"
     render = run(
         [
-            "scripts/render.py", "render",
-            "--template", str(TEMPLATE), "--content", str(content_path),
-            "--out", str(html), "--strict",
+            "scripts/render.py",
+            "render",
+            "--template",
+            str(TEMPLATE),
+            "--content",
+            str(content_path),
+            "--out",
+            str(html),
+            "--strict",
         ],
         cwd=SKILL_ROOT,
     )
@@ -223,7 +283,9 @@ def test_validate_card_fails_on_skipped_skeptic_verdict(tmp_path):
     the raw verdict files, which the card itself cannot reveal."""
     full_skeptic = json.loads(SKEPTIC_FIXTURE.read_text(encoding="utf-8"))
     dropped_id = full_skeptic["verdicts"][-1]["id"]
-    truncated = {"verdicts": [v for v in full_skeptic["verdicts"] if v["id"] != dropped_id]}
+    truncated = {
+        "verdicts": [v for v in full_skeptic["verdicts"] if v["id"] != dropped_id]
+    }
 
     content_path, _adv, _skp = _build_shaped_run(tmp_path, skeptic_verdicts=truncated)
     proc = _validate(content_path)
@@ -251,7 +313,9 @@ def test_validate_card_fails_on_untraceable_why(tmp_path):
     choice, and must fail (a fabrication finding, not a free-text traceability warning)."""
     content_path, _adv, _skp = _build_shaped_run(tmp_path)
     content = json.loads(content_path.read_text(encoding="utf-8"))
-    content["candidates"][0]["why"] += " 412 employees were actually affected, according to internal sources."
+    content["candidates"][0]["why"] += (
+        " 412 employees were actually affected, according to internal sources."
+    )
     content_path.write_text(json.dumps(content), encoding="utf-8")
 
     proc = _validate(content_path)
@@ -272,7 +336,9 @@ def test_validate_card_warns_on_verbatim_profile_sentence_in_edge(tmp_path):
     what the new copied-verbatim FINDING (check 5) exists to catch. Mutating the source the
     card is genuinely copied from is the only way to isolate this check from that one."""
     content_path, adv_path, skp_path = _build_shaped_run(tmp_path)
-    hero_id = json.loads(content_path.read_text(encoding="utf-8"))["candidates"][0]["id"]
+    hero_id = json.loads(content_path.read_text(encoding="utf-8"))["candidates"][0][
+        "id"
+    ]
 
     advocate = json.loads(adv_path.read_text(encoding="utf-8"))
     verbatim_sentence = (
@@ -304,7 +370,10 @@ def test_validate_card_fails_on_mismatched_source_name(tmp_path):
 
     proc = _validate(content_path)
     assert proc.returncode == 1, proc.stdout + proc.stderr
-    assert "source_name='Web Search' does not match the trusted pull's source_name='WARN Firehose'" in proc.stdout
+    assert (
+        "source_name='Web Search' does not match the trusted pull's source_name='WARN Firehose'"
+        in proc.stdout
+    )
 
 
 def test_validate_card_fails_on_card_text_diverging_from_advocate_verdict(tmp_path):
@@ -316,7 +385,9 @@ def test_validate_card_fails_on_card_text_diverging_from_advocate_verdict(tmp_pa
     instruction, not mechanically). validate_card.py must catch the divergence directly."""
     content_path, _adv, _skp = _build_shaped_run(tmp_path)
     content = json.loads(content_path.read_text(encoding="utf-8"))
-    content["candidates"][0]["hook"] = "A hand-edited hook that never went through a judge."
+    content["candidates"][0]["hook"] = (
+        "A hand-edited hook that never went through a judge."
+    )
     content_path.write_text(json.dumps(content), encoding="utf-8")
 
     proc = _validate(content_path)
@@ -331,36 +402,50 @@ def test_validate_card_fails_on_seen_event_id(tmp_path):
     fields trace fine to the trusted pull), so only a direct check against the state file
     catches the dedupe-contract violation."""
     shortlist = json.loads(SHORTLIST_FIXTURE.read_text(encoding="utf-8"))
-    shortlist["opportunities"].append({
-        "id": "warn-099888",
-        "company": "Thistledown Hardware",
-        "event_type": "layoff",
-        "functions": ["Test Engineer"],
-        "location": "Denver, CO",
-        "score": 50,
-        "why": "Smaller named layoff, already seen on a prior run.",
-    })
+    shortlist["opportunities"].append(
+        {
+            "id": "warn-099888",
+            "company": "Thistledown Hardware",
+            "event_type": "layoff",
+            "functions": ["Test Engineer"],
+            "location": "Denver, CO",
+            "score": 50,
+            "why": "Smaller named layoff, already seen on a prior run.",
+        }
+    )
     shortlist_path = tmp_path / "shortlist.json"
     shortlist_path.write_text(json.dumps(shortlist), encoding="utf-8")
 
     trusted = tmp_path / "trusted_candidates.json"
     join = run(
         [
-            "scripts/render.py", "join",
-            "--raw", str(RAW_EVENTS),  # undeduped -- the bug this check exists to catch
-            "--shortlist", str(shortlist_path),
-            "--out", str(trusted),
+            "scripts/render.py",
+            "join",
+            "--raw",
+            str(RAW_EVENTS),  # undeduped -- the bug this check exists to catch
+            "--shortlist",
+            str(shortlist_path),
+            "--out",
+            str(trusted),
         ],
         cwd=SKILL_ROOT,
     )
     assert join.returncode == 0, join.stdout + join.stderr
 
     extra_verdict = {
-        "id": "warn-099888", "tier": "C",
-        "openness": "L", "role_fit": "L", "product_fit": "L",
-        "region_fit": "M", "size_fit": "L", "stage_fit": "L",
+        "id": "warn-099888",
+        "tier": "C",
+        "openness": "L",
+        "role_fit": "L",
+        "product_fit": "L",
+        "region_fit": "M",
+        "size_fit": "L",
+        "stage_fit": "L",
         "wildcard": {"fired": False, "axis_index": -1, "bridge": ""},
-        "titles": ["Test Engineer"], "why": "Small, stale layoff.", "hook": "", "edge": "",
+        "titles": ["Test Engineer"],
+        "why": "Small, stale layoff.",
+        "hook": "",
+        "edge": "",
     }
 
     advocate = json.loads(ADVOCATE_FIXTURE.read_text(encoding="utf-8"))
@@ -410,11 +495,15 @@ def test_validate_card_pins_held_branch_and_reason_string(tmp_path):
 
     content = json.loads(content_path.read_text(encoding="utf-8"))
     held_candidates = [c for c in content["candidates"] if c["held"]]
-    assert len(held_candidates) == 2, "expected exactly 2 held candidates at --max-shown 3"
+    assert len(held_candidates) == 2, (
+        "expected exactly 2 held candidates at --max-shown 3"
+    )
     held_candidates[0]["hold_reason"] = "wrong reason"
     content_path.write_text(json.dumps(content), encoding="utf-8")
 
-    broken = _validate(content_path, extra_args=("--min-shown", "4", "--max-shown", "3"))
+    broken = _validate(
+        content_path, extra_args=("--min-shown", "4", "--max-shown", "3")
+    )
     assert broken.returncode == 1, broken.stdout + broken.stderr
     assert "expected 'beyond the top 3 this run'" in broken.stdout
 
@@ -476,7 +565,7 @@ SPAWN_GRADER_AGENT = {
 
 def _input_match(grader_path: Path) -> str:
     text = grader_path.read_text(encoding="utf-8")
-    m = re.search(r"^input_match:\s*'(.+)'\s*$", text, re.M)
+    m = re.search(r"^input_match:\s*'(.+)'\s*$", text, re.MULTILINE)
     assert m, f"no input_match line in {grader_path}"
     return m.group(1)
 
@@ -493,7 +582,9 @@ def test_spawn_grader_matches_namespaced_and_bare_subagent_type(grader_file, age
     could satisfy."""
     pattern = _input_match(CASE_DIR / "graders" / grader_file)
 
-    own_namespaced = json.dumps({"subagent_type": f"talent-alpha:{agent}"}, sort_keys=True)
+    own_namespaced = json.dumps(
+        {"subagent_type": f"talent-alpha:{agent}"}, sort_keys=True
+    )
     own_bare = json.dumps({"subagent_type": agent}, sort_keys=True)
     assert re.search(pattern, own_namespaced), (
         f"{grader_file}'s input_match must match a namespaced spawn of {agent!r}"
@@ -503,7 +594,9 @@ def test_spawn_grader_matches_namespaced_and_bare_subagent_type(grader_file, age
     )
 
     for other in set(SPAWN_GRADER_AGENT.values()) - {agent}:
-        other_namespaced = json.dumps({"subagent_type": f"talent-alpha:{other}"}, sort_keys=True)
+        other_namespaced = json.dumps(
+            {"subagent_type": f"talent-alpha:{other}"}, sort_keys=True
+        )
         other_bare = json.dumps({"subagent_type": other}, sort_keys=True)
         assert not re.search(pattern, other_namespaced), (
             f"{grader_file}'s input_match must NOT match a spawn of {other!r} ({own_namespaced!r})"
@@ -530,14 +623,14 @@ def test_case_declares_a_state_record_grader():
     """A `tool_used` Bash grader with `min >= 1` pins that the run actually called
     `state.py record`, not merely that the prompt asked it to."""
     matches = [
-        g for g in (CASE_DIR / "graders").glob("*.md")
-        if "tool: Bash" in g.read_text(encoding="utf-8")
-        and "record" in _input_match(g)
+        g
+        for g in (CASE_DIR / "graders").glob("*.md")
+        if "tool: Bash" in g.read_text(encoding="utf-8") and "record" in _input_match(g)
     ]
     assert matches, "expected a tool_used Bash grader pinning the state.py record step"
     for g in matches:
         text = g.read_text(encoding="utf-8")
-        m = re.search(r"^min:\s*(\d+)\s*$", text, re.M)
+        m = re.search(r"^min:\s*(\d+)\s*$", text, re.MULTILINE)
         assert m and int(m.group(1)) >= 1, f"{g.name} should require at least 1 call"
 
 
@@ -561,11 +654,17 @@ def test_published_at_pool_is_date_only_not_the_clock(tmp_path):
     hour = stamp[11:13]  # "20" from 2026-09-05T20:00:00Z
     assert hour.isdigit() and len(hour) == 2, stamp
     # the hour must not already be traceable from the event's own text
-    assert hour not in json.dumps(ev.get("title", "")) + json.dumps(ev.get("snippet", ""))
+    assert hour not in json.dumps(ev.get("title", "")) + json.dumps(
+        ev.get("snippet", "")
+    )
 
-    content["candidates"][0]["why"] += f" Roughly {hour} people on the test line were let go."
+    content["candidates"][0]["why"] += (
+        f" Roughly {hour} people on the test line were let go."
+    )
     content_path.write_text(json.dumps(content), encoding="utf-8")
 
     proc = _validate(content_path)
     assert proc.returncode == 1, proc.stdout + proc.stderr
-    assert f"states a figure not in the pull or profile: {hour}" in proc.stdout, proc.stdout
+    assert f"states a figure not in the pull or profile: {hour}" in proc.stdout, (
+        proc.stdout
+    )
