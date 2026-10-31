@@ -585,7 +585,7 @@
         -100
       ],
       "parameters": {
-        "content": "## 4. Make a useful shortlist\n\nA quick first pass picks stories that could matter for your role. The next check ties each suggestion back to the original evidence.\n\nAn invented or unsupported company cannot become a recommendation.",
+        "content": "## 4. Make a useful shortlist\n\nA quick first pass picks stories that could matter for your role. The next check ties each suggestion back to the original evidence.\n\nCompany names must trace back to the collected story.",
         "width": 700,
         "height": 950,
         "color": 1
@@ -649,7 +649,7 @@
         -100
       ],
       "parameters": {
-        "content": "## 8. Deliver the card, then remember it\n\nEmail one digest to you. Only after email delivery is confirmed are its event IDs saved as seen.\n\nA failed send leaves the stories available for retry. If delivery is uncertain or saving memory fails, a retry may repeat a card.",
+        "content": "## 8. Deliver the card, then remember it\n\nEmail one digest to you. When Gmail confirms the send, save the event IDs in memory.\n\nA failed send leaves the stories available for retry. If delivery is uncertain or saving memory fails, a retry may repeat a card.",
         "width": 820,
         "height": 950,
         "color": 5

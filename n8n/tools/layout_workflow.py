@@ -84,7 +84,7 @@ NOTES = [
         1,
         (
             "## 4. Make a useful shortlist\n\nA quick first pass picks stories that could matter for your role. "
-            "The next check ties each suggestion back to the original evidence.\n\nAn invented or unsupported company cannot become a recommendation."
+            "The next check ties each suggestion back to the original evidence.\n\nCompany names must trace back to the collected story."
         ),
     ),
     (
@@ -123,7 +123,7 @@ NOTES = [
         [820, 950],
         5,
         (
-            "## 8. Deliver the card, then remember it\n\nEmail one digest to you. Only after email delivery is confirmed are its event IDs saved as seen.\n\n"
+            "## 8. Deliver the card, then remember it\n\nEmail one digest to you. When Gmail confirms the send, save the event IDs in memory.\n\n"
             "A failed send leaves the stories available for retry. If delivery is uncertain or saving memory fails, a retry may repeat a card."
         ),
     ),
