@@ -278,16 +278,15 @@ def test_validate_card_passes_on_the_shaped_positive_fixture(tmp_path):
 
 
 def test_validate_card_fails_on_skipped_skeptic_verdict(tmp_path):
-    """A skeptic verdict missing for one id renders a perfectly normal-looking card
-    (render.py falls back to the advocate's own tier); validate_card.py must catch it from
-    the raw verdict files, which the card itself cannot reveal."""
+    """The validator also detects a verdict removed after a successful reconcile."""
     full_skeptic = json.loads(SKEPTIC_FIXTURE.read_text(encoding="utf-8"))
     dropped_id = full_skeptic["verdicts"][-1]["id"]
     truncated = {
         "verdicts": [v for v in full_skeptic["verdicts"] if v["id"] != dropped_id]
     }
 
-    content_path, _adv, _skp = _build_shaped_run(tmp_path, skeptic_verdicts=truncated)
+    content_path, _adv, skeptic_path = _build_shaped_run(tmp_path)
+    skeptic_path.write_text(json.dumps(truncated), encoding="utf-8")
     proc = _validate(content_path)
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert f"no skeptic verdict for id {dropped_id!r}" in proc.stdout

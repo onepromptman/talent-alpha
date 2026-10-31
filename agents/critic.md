@@ -25,7 +25,7 @@ the producer saw.
    rows, no fabricated citation, no upgraded tier. The tier vocabulary for this module is:
 
 - **Filed**: a government WARN Act filing (source_name "WARN Firehose"); highest confidence, dated, official, employer-attributed
-- **Reported**: a dated news or search result about funding distress (source_name "Web Search" or "Perplexity Search"); single-source until corroborated
+- **Reported**: dated news or search coverage of layoffs or funding distress (source_name "Web Search" or "Perplexity Search"); single-source until corroborated
 - **Company-stated**: a fact from the user's own saved profile, inside COMPANY_PROFILE; never independently verified
 
 3. **Contract.** The artifact matches its schema exactly: every named slot filled or in a

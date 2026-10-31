@@ -24,7 +24,7 @@ Agent pack (Claude plugin) and No-code (n8n) · No coding, some setup · In prep
 | | The plugin | The n8n workflow |
 | --- | --- | --- |
 | Runs in | Claude Code or Cowork (the Claude desktop app), not the regular chat window | n8n, Cloud or self-hosted, nightly |
-| You'll need | A Claude plan that includes Claude Code or Cowork. Nothing else. | An Anthropic API key, Gmail, a free WARN Firehose key; Perplexity optional |
+| You'll need | Claude Code or Cowork with agent tools, plus Python 3.10+. | An Anthropic API key, Gmail, a free WARN Firehose key; Perplexity optional |
 | Each run costs | Model use on your plan: a scanner, two judges, a checker | A scanner and two judges, billed to your Anthropic account |
 
 The plugin finds layoffs by web search (shown as Reported); n8n reads official WARN
@@ -37,7 +37,7 @@ flowchart LR
   A["Layoff filings and<br/>funding news come in"] --> B["Anything already<br/>seen is skipped"]
   B --> C["A scanner picks<br/>a shortlist"]
   C --> D["One judge argues for,<br/>one argues against"]
-  D --> E["A checker reviews<br/>both verdicts"]
+  D --> E["Validation and<br/>review"]
   E --> F["You get one<br/>ranked card"]
 ```
 
@@ -49,7 +49,7 @@ flowchart LR
    /plugin install talent-alpha@talent-alpha
    ```
 2. Type `set up talent alpha`. It asks about your company, the role you are filling and
-   the industries to watch, one question at a time. Any question can be skipped. About
+   the industries to watch, one question at a time. Confirm your company, role and signal industries; other questions can be skipped. About
    five minutes.
 3. Type `run talent alpha`. A few minutes later a card is saved as an HTML file in your
    working folder. Open it in a browser.
@@ -95,7 +95,7 @@ people; you decide who to reach out to.
 From this folder:
 
 ```bash
-python3 -m pip install pytest
+python3 -m pip install -r requirements-dev.txt
 python3 -m pytest -q
 ```
 
@@ -104,19 +104,18 @@ python3 -m pytest -q
 changes in [CHANGELOG.md](CHANGELOG.md). Model tiers, state and scheduling:
 [docs/how-it-works.md](docs/how-it-works.md).
 
-## Built from source
+## Standalone maintenance
 
-This repository is generated from the `talent-alpha` module of onepromptman/talentai, the
-OnePromptMan recruiting system, by its publish script `tools/publish/talent-alpha.sh`. This
-copy is module version 1.3.0, module tree `af6f34d09ee16f845c3ff5f9096e27039bddd0e6`. A change made only here is
-replaced by the next publish, so changes are made in the module; see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Talent Alpha is maintained in this repository. It originated as a TalentAI module;
+changes to this edition are reviewed and released here. Do not overwrite this tree
+with an upstream generated export. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Coming from the earlier talent-alpha repository?** Follow the upgrade note at the
-top. That repository's four public forks are detached copies of its first commit and
-do not receive these updates.
+The plugin's checked build command validates the card before recording seen IDs.
+The n8n deployment uses two judges and deterministic validation. Its maintained
+code and export builder live in `n8n/`; installation details are in
+[docs/setup.md](docs/setup.md).
 
 ## License
 
 MIT. See [LICENSE](LICENSE). Every card is a draft for a person to review. Questions or
-bugs? Open an [issue](../../issues).
+bugs? Open an [issue](https://github.com/onepromptman/talent-alpha/issues).

@@ -1,90 +1,16 @@
-"""Card-accuracy contract for Talent Alpha: the layer `render.py` does not already check.
+"""Validate a Talent Alpha content file against its source batch and judge files.
 
-`render.py verify` already scans the rendered HTML for filler, unfilled slot placeholders,
-and em dashes; `render.py render --strict` already fails closed on a missing required
-content field. This script does not re-implement either. Its job is everything neither
-covers: the two judges are actually independent, the blend formula was applied correctly,
-and the free-text fields (`why`, `hook`, `edge`, `titles`) trace to the trusted pull or the
-company profile rather than being invented -- the risks the card-accuracy eval
-(`evals/card-accuracy/`) names.
+The production render.py build command invokes check_card before rendering or recording
+state. This CLI remains available for frozen evals and checking saved artifacts:
 
-    python3 validate_card.py check --card <run folder>/content.json --pull <fixture dir>
-        [--min-shown 4] [--max-shown 10]
+    python validate_card.py check --card <run>/content.json --pull <inputs>
 
-`--card` is the reconciled content JSON `render.py reconcile` writes (`run` + `candidates`).
-Its sibling files in the same run folder, `advocate_verdicts.json` and `skeptic_verdicts.json`
-(the exact names `SKILL.md` step 2.5 has each judge write), are read alongside it: the card
-itself carries only the BLENDED tier, so the "was a judge actually skipped" and "was the
-blend formula applied correctly" checks are impossible from the card alone (`render.py`
-falls back to the advocate's own tier when a skeptic verdict is missing for an id, so a
-skipped judge renders a perfectly normal-looking card -- the card cannot indict itself).
-
-`--pull` is the fixture directory: `raw_events.json` (the frozen pull, keyed on `event_id`,
-`EVENT_PIPELINE_SCHEMA.md` shape), `onepromptman-profile.md` (for the `## Kit:
-talent-alpha` block's `leverage` paragraph, i.e. COMPANY_PROFILE), and, optionally,
-`talent-alpha-state.json` (the dedupe state file, §6 of the same schema doc -- its
-`seen_events` keys feed the dedupe check below; absent entirely, that one check degrades
-to a no-op rather than a usage error).
-
-Checks (FINDINGS -- fail the run):
-
-  - grounding    every candidate id resolves to an advocate verdict; every advocate id
-                 resolves to a skeptic verdict (a skipped skeptic is otherwise invisible,
-                 per the docstring above)
-  - identity     advocate_verdicts.json and skeptic_verdicts.json are not byte-identical
-                 (the two judges did not just mirror one output)
-  - engine-pinned fields (company, location, event_type, employees_affected, source_name,
-                 source_url) match the trusted event exactly -- these ARE already pinned by
-                 `render.py join`+`reconcile`, so this only catches a hand-edited card
-                 (SKILL.md 2.6 forbids hand-editing the output)
-  - tier         candidate tier == TIER_BY_RANK[js_round((rank_a + rank_s) / 2)] (rank_s
-                 falls back to rank_a when the skeptic verdict is missing, matching
-                 render.py exactly) unless held, in which case tier must be "HELD"
-  - held         held/hold_reason reproduces reconcile's two rules over the card's own
-                 array order (which IS reconcile's post-sort order): idx >= --max-shown ->
-                 "beyond the top N this run"; disagreement (|rank_a - rank_s| >= 3) at
-                 idx >= --min-shown -> "judges disagreed sharply"; else not held
-  - order        the card's candidate order is non-increasing blended rank, ties broken by
-                 ascending age_days (reconcile's own sort key)
-  - fabrication  a money or large-integer figure in why/hook/edge/titles that is not the
-                 trusted event's own employees_affected, its own published_at, nor a figure
-                 stated in the profile's leverage paragraph is an invented number, not a
-                 phrasing choice (EVAL_TUNING.md: a hard finding an agent can satisfy by
-                 deleting content will be satisfied by deleting content -- deleting a number
-                 an agent has no reason to invent in the first place is not a defect this
-                 makes worse). A percent figure is NOT here -- see WARNINGS -- because a
-                 correctly DERIVED percentage (e.g. a headcount over a total) is arithmetic,
-                 not an invented literal, and the pool holds only literals.
-  - copied       a candidate's why/hook/edge/titles equals the matching advocate verdict's
-                 own fields verbatim (render.py's reconcile copies these fields straight off
-                 the advocate verdict; nothing else in the pipeline mechanically stops a
-                 session from hand-patching content.json afterward)
-  - dedupe       no candidate id appears in the pull dir's talent-alpha-state.json
-                 `seen_events` (an already-seen event reaching the card means something
-                 joined against raw_events.json instead of the deduped new_events.json --
-                 the card alone cannot reveal this either)
-
-WARNINGS (printed, never fail the run -- EVAL_TUNING.md: traceability of a free-text column
-is a warning, not a finding, because a hard fail here is trivially gamed by deleting the
-one word that would have triggered it):
-
-  - a why/hook/edge with no 5+-letter word in common with the trusted event's own text
-    (title/snippet/company) or the leverage paragraph
-  - prose that names the OTHER provenance tier's vocabulary (a Filed/WARN-Firehose event
-    described as "reported"; a Reported/Web-Search event described as "filed") -- real, but
-    a keyword match on ordinary English ("no problems reported") is too blunt to fail a
-    correct run on, so it surfaces for a human, per the same EVAL_TUNING rule above
-  - a percent figure in why/hook/edge/titles with no literal match in the pull or profile
-    pool (EVAL_TUNING Rule 1: a check that can reject a correct output costs a repair lap
-    per run -- a derived percentage is the common case, not the exception)
-  - a leverage-paragraph sentence (6+ words) appearing verbatim inside a candidate's
-    why/hook/edge (demoted from a finding: the risk this pipeline names is a paraphrase
-    that misstates the profile, and an exact quote is the one form of edge that cannot do
-    that)
-  - fewer than 5 candidates on the card (a row-count floor above what a slow night's data
-    actually supports would force invention, per EVAL_TUNING's row-floor lesson)
-
-Exit 0 clean (warnings allowed), 1 with findings (one line each), 2 on a usage error.
+The pull folder contains raw_events.json, optionally onepromptman-profile.md and a
+pre-run talent-alpha-state.json. Judge verdict files are siblings of the card.
+Checks cover source identity, grounded extractions, numeric claims, copied judge prose,
+tier/hold/order rules and already-seen IDs. Lexical overlap and derived percentages are
+warnings; these heuristics cannot establish semantic truth or sourcing recall.
+Exit 0 means no findings, 1 means findings, and 2 means invalid CLI inputs.
 """
 
 from __future__ import annotations
@@ -96,6 +22,8 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+
+from render import grounded_extraction, resolved_company
 
 TIER_RANK = {"S": 3, "A": 2, "B": 1, "C": 0}
 TIER_BY_RANK = ["C", "B", "A", "S"]
@@ -170,7 +98,12 @@ def js_round(x: float) -> int:
 
 
 def leverage_from_profile(text: str) -> str | None:
-    m = re.search(r"^\s*leverage:\s*(.+)$", text, re.MULTILINE)
+    section = re.search(
+        r"^## Kit: talent-alpha\s*\n(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL
+    )
+    if not section:
+        return None
+    m = re.search(r"^leverage:[ \t]*(.+)$", section.group(1), re.MULTILINE)
     if not m:
         return None
     raw = m.group(1).strip()
@@ -224,14 +157,11 @@ def check_card(
             "advocate_verdicts.json or skeptic_verdicts.json has no verdicts"
         )
 
-    # A judge cannot be caught skipping a candidate from the card alone (render.py falls
-    # back to the advocate's own tier silently); check the raw verdict files instead.
+    # Defense in depth for externally supplied or edited content. The production build
+    # command also requires both judges to cover every trusted candidate.
     for aid in adv_by_id:
         if aid not in skp_by_id:
-            findings.append(
-                f"no skeptic verdict for id {aid!r} (render.py falls back to the "
-                "advocate's own tier, which the rendered card cannot reveal)"
-            )
+            findings.append(f"no skeptic verdict for id {aid!r}")
 
     if (
         adv_verdicts
@@ -239,9 +169,9 @@ def check_card(
         and json.dumps(adv_verdicts, sort_keys=True)
         == json.dumps(skp_verdicts, sort_keys=True)
     ):
-        findings.append(
+        warnings.append(
             "advocate_verdicts.json and skeptic_verdicts.json are byte-identical; "
-            "the two judges must not mirror each other"
+            "confirm they were produced independently (agreement alone is not proof of copying)"
         )
 
     leverage_pool: set[str] = claim_numbers(leverage) if leverage else set()
@@ -253,6 +183,10 @@ def check_card(
 
     for idx, c in enumerate(candidates):
         cid = c.get("id", f"<idx {idx}>")
+        if not leverage and c.get("edge", "").strip():
+            findings.append(
+                f"candidate {cid}: edge supplied but this kit has no saved leverage"
+            )
 
         if seen_events and c.get("id") in seen_events:
             findings.append(
@@ -286,7 +220,7 @@ def check_card(
                 f"beyond the top {max_shown} this run",
                 "HELD",
             )
-        elif disagree and idx >= min_shown:
+        elif disagree:
             exp_held, exp_reason, exp_tier = True, "judges disagreed sharply", "HELD"
         else:
             exp_held, exp_reason, exp_tier = False, "", TIER_BY_RANK[blended]
@@ -316,7 +250,12 @@ def check_card(
                 ("source_name", "source_name"),
                 ("source_url", "source_url"),
             ):
-                if c.get(field) != event.get(event_key):
+                expected = event.get(event_key)
+                if field == "company":
+                    expected = resolved_company(event, c.get(field))
+                elif field == "location" and not expected:
+                    expected = grounded_extraction(event, c.get(field))
+                if c.get(field) != expected:
                     findings.append(
                         f"candidate {cid}: {field}={c.get(field)!r} does not match the "
                         f"trusted pull's {event_key}={event.get(event_key)!r}"

@@ -29,8 +29,11 @@ runs.
 ```
 
 `event_type` is one of `layoff`, `shutdown`, `funding_distress`. A funding
-category item may have empty `company`/`location` at this stage (news snippets
-do not always name it structurally); the scanner extracts them.
+category item may have empty `company`/`location` at this stage. The scanner
+can extract the company from the original title/snippet; the join accepts
+the extraction only when its words occur there. A missing location stays
+empty unless the scanner's extraction also occurs in that evidence.
+Dates and timestamps without an offset are interpreted as UTC.
 
 Write raw events to `<run folder>/raw_events.json` as a flat array, WARN and
 funding-distress items merged together.
@@ -90,7 +93,7 @@ present in `raw_events.json`).
 **Funding distress** (replaces the Perplexity node):
 
 ```
-<target industries> companies (NOT general software/SaaS/consumer-tech/gaming)
+<target industries> companies
 facing layoffs tied to funding distress, a down round, missed earnings, or
 restructuring, reported in the last 7 days. Exclude generic industry
 roundups, trackers, or archive pages -- only single-company news stories.

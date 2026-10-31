@@ -21,7 +21,5 @@ You can expect a first reply within seven days.
 
 ## Where fixes land
 
-The kits are built in onepromptman/talentai and published from there to their own
-repositories (talent-alpha, screen-scribe, re-engage-applicants, Talent-One and
-dag-talent-agents). A fix is made in talentai and published to each affected
-repository. Only the latest version on `main` is supported.
+Fixes for this standalone edition land in this repository. Only the latest version
+on `main` is supported.

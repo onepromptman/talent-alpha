@@ -30,8 +30,9 @@ n8n -> **Credentials** -> **New**, then attach each on the matching node(s):
 | **Perplexity** (optional) | [perplexity.ai](https://www.perplexity.ai) API settings | **Fetch Funding-Distress Signals** |
 | **Gmail** | connect your Google account in n8n | **Email Overnight Digest**, **Email Error Alert** |
 
-Only want WARN layoffs, not funding news? Delete **Fetch Funding-Distress Signals**
-and **Normalize Funding-Distress Items** and skip the Perplexity credential.
+Only want WARN layoffs? Remove the funding fetch/normalize branch and its merge,
+then connect **Normalize WARN Items** directly to **Skip Already-Scanned Events**.
+Removing only the fetch nodes can leave a merge waiting for an input.
 
 ## 3. Create one Data Table
 
@@ -66,16 +67,23 @@ by hand.
 
 - Open **Email Overnight Digest** and set the recipient to your address (same on
   **Email Error Alert**).
-- After you save the workflow once: **Settings -> Error Workflow -> this workflow**,
-  so a failed run emails you instead of failing silently.
+- For automatic error alerts, select a published error-handler workflow under
+  **Settings -> Error Workflow**. n8n may reject a reference to this workflow
+  while it has no published version. Leave the inactive draft unlinked, then
+  configure the handler when publishing. If you use this workflow itself, its
+  **On Workflow Error** branch supplies the handler,
+  so an automatic failed run can email you. Fetch, scoring and digest-delivery
+  errors stop the workflow; they are not counted as a quiet day. If Gmail itself
+  is unavailable, the email alert may fail too; inspect Executions for the error.
 
 ## 6. Test, then schedule
 
 Click **Execute Workflow** to run once now. The card is the output of the
 **Render Scanner Report** node (open its output to view the HTML) and it's emailed
 to you. First run: everything is new, so you get a full card; later runs only
-surface events you haven't seen. When you're happy, change the hour on **Nightly
-06:00 Scan** if you like, and toggle the workflow **Active**.
+surface events you haven't seen. When you're happy, set the workflow timezone and hour on **Nightly 06:00 Scan**, then activate it
+when the sources and delivery have passed your test. An imported copy stays inactive
+until you activate it.
 
 ## Upgrading an existing install
 
@@ -108,16 +116,29 @@ the new workflow from this repository.
 2. **Shortlist** - a fast model (Haiku) does a broad-recall scan against your role.
 3. **Judge** - an **Advocate** and a **Skeptic** (both Sonnet) independently argue
    each candidate on six axes and assign a tier.
-4. **Reconcile** - the two judges' tiers are blended, fresher signals sort first
-   when tiers tie, and the top 4-10 are kept. One model never grades its own work.
-5. **Render + email** - the survivors become a one-page card, emailed to you.
+4. **Reconcile** - both judges must cover every trusted event exactly once. Their
+   tiers are blended; freshness breaks ties. Sharp S/C disagreement is always held,
+   and unsupported numeric claims fail the run. These checks do not prove news true.
+5. **Render + email** - the card retains source links. Rendering is checked before
+   email. Only a confirmed Gmail message ID allows **Confirm Digest Delivery** to
+   pass event IDs to **Record Scanned Events**. A failed send leaves them unseen.
+   If Gmail sends but the response or later state write is lost, a retry can resend;
+   delivery is not guaranteed exactly once.
+
+A valid empty feed is distinct from a failed response. When neither source has
+new events, scoring stops without model calls. Different URLs about the same
+real-world layoff are still distinct source IDs. The n8n path uses two judges
+and deterministic checks; the plugin's additional critic is a separate feature.
 
 ## Tuning
 
 - **How many make the card / how strict** - the **Reconcile Judges** node
-  (`MIN_SHOWN`, `MAX_SHOWN`, and how tiers blend).
+  (`MAX_SHOWN` and how tiers blend). No minimum overrides a disagreement hold.
 - **The scoring itself** - the **Signal Scanner Agent** and the two judge nodes
   hold the prompts; reference copies live in [`../n8n/prompts/`](../n8n/prompts/).
+  Code nodes are maintained in `n8n/code/`; run `python n8n/tools/build_workflows.py`
+  after editing them. `--check` verifies both exports match those sources and the
+  shared HTML template. Keep credential IDs and private profiles out of public exports.
 - **Cadence** - the **Nightly 06:00 Scan** trigger. Native scheduling on the
   Claude Code / Cowork side is unconfirmed for this build; n8n's own scheduler
   is the reliable place to run this unattended today.
