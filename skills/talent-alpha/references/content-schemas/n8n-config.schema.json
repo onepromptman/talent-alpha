@@ -1,21 +1,49 @@
 {
   "title": "Talent Alpha n8n Config node",
   "type": "object",
-  "required": ["targetSectors", "companyProfile", "openRole"],
+  "required": [
+    "targetSectors",
+    "companyProfile",
+    "openRole"
+  ],
   "additionalProperties": false,
   "properties": {
-    "targetSectors": {"type": "string"},
-    "companyProfile": {"type": "string"},
+    "targetSectors": {
+      "type": "string"
+    },
+    "companyProfile": {
+      "type": "string"
+    },
     "openRole": {
       "type": "object",
-      "required": ["id", "title", "functions", "location"],
+      "required": [
+        "id",
+        "title",
+        "functions",
+        "location"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": {"type": "string"},
-        "title": {"type": "string"},
-        "functions": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-        "location": {"type": "string"}
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "functions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "type": "string"
+        }
       }
+    },
+    "author": {
+      "type": "string"
     }
   }
 }

@@ -31,6 +31,10 @@ jobs:
         run: ruff format --check .
       - name: Tests
         run: python -m pytest -q
+      - name: Workflow exports
+        run: |
+          node --version
+          python n8n/tools/build_workflows.py --check
       - name: Dependency audit
         run: pip-audit -r requirements-dev.txt
       - name: Leak scan (public rules)

@@ -37,7 +37,7 @@ flowchart LR
   A["Layoff filings and<br/>funding news come in"] --> B["Anything already<br/>seen is skipped"]
   B --> C["A scanner picks<br/>a shortlist"]
   C --> D["One judge argues for,<br/>one argues against"]
-  D --> E["A checker reviews<br/>both verdicts"]
+  D --> E["Validation and<br/>review"]
   E --> F["You get one<br/>ranked card"]
 ```
 
@@ -95,7 +95,7 @@ people; you decide who to reach out to.
 From this folder:
 
 ```bash
-python3 -m pip install pytest
+python3 -m pip install -r requirements-dev.txt
 python3 -m pytest -q
 ```
 
@@ -111,8 +111,9 @@ changes to this edition are reviewed and released here. Do not overwrite this tr
 with an upstream generated export. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The plugin's checked build command validates the card before recording seen IDs.
-The n8n deployment is a separate path; its workflow hardening and live testing are
-tracked separately from these plugin fixes.
+The n8n deployment uses two judges and deterministic validation. Its maintained
+code and export builder live in `n8n/`; installation details are in
+[docs/setup.md](docs/setup.md).
 
 ## License
 

@@ -7,6 +7,19 @@ All notable changes to Talent Alpha. Format loosely follows
 
 ## [Unreleased]
 
+### n8n reliability
+
+- The identified original test scanner shares all 30 node IDs and its wiring with
+  the public export. Its maintained Code nodes now generate both workflow exports.
+- Source, scanner, judge and email errors stop execution. Valid empty feeds stop
+  before scoring; they are not confused with malformed or failed responses.
+- Both judges must cover every event exactly once, source links reach the card,
+  unsupported numeric claims fail, and sharp disagreement is always held.
+- Rendering verifies required slots before email. Event IDs reach dedupe storage
+  only after Gmail returns a message ID. An uncertain send or failed state write
+  can still require a resend; delivery is not guaranteed exactly once.
+- Live deployment credentials, profiles and test evidence stay outside this repository.
+
 ### Plugin reliability
 
 - The production `build` command requires complete, unique verdicts from both judges,
@@ -19,7 +32,7 @@ All notable changes to Talent Alpha. Format loosely follows
 - Setup exports and checks `targetSectors`; a local PROFILE-SPEC documents the standalone
   profile. Scanner halts and unresolved critic findings stop downstream execution.
 - Contribution and release ownership are local to this standalone edition. The n8n
-  workflow files are unchanged; these fixes do not claim a live n8n validation.
+  deployment is checked separately from the plugin.
 
 
 ### Changed
