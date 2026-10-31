@@ -10,6 +10,8 @@ import copy
 import json
 from pathlib import Path
 
+from layout_workflow import layout_workflow
+
 ROOT = Path(__file__).resolve().parents[1]
 CODE = ROOT / "code"
 NODE_CODE = {
@@ -94,7 +96,7 @@ def build(source):
     )
     workflow["connections"]["Email Overnight Digest"] = connection(DELIVERY)
     workflow["connections"][DELIVERY] = connection("Record Scanned Events")
-    return workflow
+    return layout_workflow(workflow)
 
 
 def main():

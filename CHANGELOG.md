@@ -9,6 +9,9 @@ All notable changes to Talent Alpha. Format loosely follows
 
 ### n8n reliability
 
+- The canvas follows eight numbered stages with plain-language explanations, plus
+  setup and error notes. Both exports share the layout; execution behavior is unchanged.
+
 - The identified original test scanner shares all 30 node IDs and its wiring with
   the public export. Its maintained Code nodes now generate both workflow exports.
 - Source, scanner, judge and email errors stop execution. Valid empty feeds stop

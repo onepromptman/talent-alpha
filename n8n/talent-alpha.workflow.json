@@ -18,8 +18,8 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.3,
       "position": [
-        -80,
-        416
+        0,
+        440
       ]
     },
     {
@@ -54,8 +54,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        224,
-        304
+        560,
+        280
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -72,8 +72,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        448,
-        304
+        800,
+        280
       ]
     },
     {
@@ -98,8 +98,8 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        672,
-        304
+        1400,
+        440
       ]
     },
     {
@@ -111,8 +111,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
-        304
+        1640,
+        440
       ]
     },
     {
@@ -129,8 +129,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1120,
-        304
+        1960,
+        440
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -155,8 +155,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.5,
       "position": [
-        1136,
-        528
+        1900,
+        700
       ],
       "credentials": {}
     },
@@ -169,8 +169,8 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        1264,
-        528
+        2140,
+        700
       ]
     },
     {
@@ -182,8 +182,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1472,
-        304
+        2240,
+        440
       ]
     },
     {
@@ -195,8 +195,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1696,
-        304
+        2460,
+        440
       ]
     },
     {
@@ -213,8 +213,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1920,
-        0
+        2700,
+        260
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -239,8 +239,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.5,
       "position": [
-        1936,
-        224
+        2660,
+        830
       ],
       "credentials": {}
     },
@@ -253,8 +253,8 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        2064,
-        224
+        2940,
+        260
       ]
     },
     {
@@ -264,8 +264,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        2272,
-        304
+        3200,
+        440
       ]
     },
     {
@@ -282,8 +282,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1920,
-        400
+        2700,
+        600
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -299,8 +299,8 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        2064,
-        592
+        2940,
+        700
       ]
     },
     {
@@ -312,8 +312,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2496,
-        304
+        3500,
+        440
       ]
     },
     {
@@ -325,8 +325,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2720,
-        208
+        4060,
+        440
       ]
     },
     {
@@ -344,8 +344,8 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        2944,
-        208
+        4620,
+        440
       ],
       "retryOnFail": true,
       "maxTries": 3,
@@ -393,8 +393,8 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        2720,
-        400
+        5100,
+        440
       ]
     },
     {
@@ -404,8 +404,8 @@
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
       "position": [
-        2688,
-        0
+        4080,
+        1180
       ]
     },
     {
@@ -423,29 +423,13 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        2912,
-        0
+        4380,
+        1180
       ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
       "credentials": {}
-    },
-    {
-      "parameters": {
-        "content": "### 2 · Connect credentials + one Data Table\n\n- **Anthropic**: the Scanner (Haiku) and both Judges (Sonnet) need an Anthropic API\n  credential. This is the only credential the pinned-data demo needs.\n- **WARN Firehose**: free key at warnfirehose.com/account (25 calls/day free). Add an\n  n8n **Header Auth** credential (header name `X-API-Key`) on **Fetch WARN Notices**.\n- **Perplexity**: add a Perplexity credential on **Fetch Funding-Distress Signals**.\n  Only want WARN? Delete that node + **Normalize Funding-Distress Items**.\n- **Data Table**: create one named `talent_alpha_events_seen` with a text column `event_id`.\n  This is the dedupe memory, so you never get pinged about the same event twice.\n- **Gmail**: set your address on **Email Overnight Digest** (and **Email Error Alert**).\n- **Error workflow**: after the first save, Settings → Error Workflow → this workflow.\n\n### 3 · Run & test\n\n- Hit **Execute Workflow** to run once now (ignores the schedule).\n- First run: every event is new, so you get a full card. Later runs only surface\n  events you haven't seen.\n- The card is the output of **Render Scanner Report**: it's emailed as HTML, and you\n  can open that node's output to copy the HTML directly.\n- No keys handy? Import the pinned-data mock (`talent-alpha-demo`) to see a full  run with only an Anthropic credential.\n\n---\n\n",
-        "height": 544,
-        "width": 1088,
-        "color": "#021B97"
-      },
-      "id": "24adde44-fa8a-4511-ba65-db6fadf41f28",
-      "name": "Sticky Note 35f678bf",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        784,
-        672
-      ]
     },
     {
       "parameters": {
@@ -456,8 +440,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        448,
-        560
+        800,
+        600
       ]
     },
     {
@@ -467,8 +451,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        672,
-        432
+        1080,
+        440
       ]
     },
     {
@@ -489,8 +473,8 @@
       "type": "n8n-nodes-base.perplexity",
       "typeVersion": 2,
       "position": [
-        224,
-        560
+        560,
+        600
       ],
       "credentials": {},
       "onError": "stopWorkflow"
@@ -506,57 +490,9 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        48,
-        416
+        240,
+        440
       ]
-    },
-    {
-      "parameters": {
-        "content": "## ✏️ Start here\nEdit the **Config** node → your company profile (with concrete leverage: equity, comp, relocation, benefits, ownership) and the role you're hiring for. Every card downstream keys off this.\n\n### 1 · Tailor it: edit the **Config** node first\n\nEverything downstream keys off this one node.\n\n- **companyProfile**: your company + the *concrete* leverage the judges cite in each\n  \"edge\" line: equity band, comp stance, relocation support, benefits, ownership\n  scope. Be specific: vague profiles produce vague edges.\n- **openRole**: the role you're filling: `title`, `functions` (adjacent titles that\n  still count as a match), `location`.\n- **Cadence**: change the hour on **Nightly 06:00 Scan**, or swap in a weekly trigger.",
-        "height": 422,
-        "width": 848,
-        "color": 4
-      },
-      "id": "sticky-config-edit-first",
-      "name": "Sticky Note: Start here",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        -112,
-        -160
-      ]
-    },
-    {
-      "parameters": {
-        "content": "### Reading the card\n\nTiers: **S** drop everything · **A** act today · **B** watch · **C** ignored (kept\nvisible so you can overrule). Hex axes clockwise from top: **OP** openness · **RO**\nrole · **PR** product · **RG** region · **SZ** size · **ST** stage. ◆ on an axis = a\nwildcard cross-industry bridge, named on the card.\n\n### Extend it\n\nThis is **category 1 of N**. Duplicate the *fetch → normalize* pair for M&A, RTO\nmandates, exec departures, or security breaches: they all merge into the same\nscanner + judge panel. Any new source must emit `company` and `location` so the card\nnever shows a nameless row (see the funding-source note if you add news-search feeds).\n",
-        "height": 368,
-        "width": 768,
-        "color": 6
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        2304,
-        608
-      ],
-      "id": "cde7a1d0-1fe8-4f59-b650-bd7f559cfbb6",
-      "name": "Sticky Note"
-    },
-    {
-      "parameters": {
-        "content": "## 🛰️ Talent Alpha: overnight talent-signal scanner\n\nEvery night this scans distress signals (WARN layoffs & closures + funding-distress\nnews), scores each one against **your** open role with an Advocate/Skeptic judge\npanel, and emails a ranked card: who just became hireable, why now, your outreach\nhook, and your concrete edge.\n",
-        "height": 256,
-        "width": 944,
-        "color": "#914818"
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        832,
-        -160
-      ],
-      "id": "bd6adc0a-0ce2-46e2-84d4-a98b6c156603",
-      "name": "Sticky Note1"
     },
     {
       "id": "8a90c74c-6bcb-4a35-8c8d-752b9caed410",
@@ -564,13 +500,189 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3248,
-        416
+        4860,
+        440
       ],
       "parameters": {
         "jsCode": "const delivery = $input.first().json;\nif (!delivery || typeof delivery.id !== 'string' || !delivery.id) {\n  throw new Error('Gmail did not confirm delivery; events remain unseen for retry');\n}\nconst events = $('Render Scanner Report').first().json.eventsToRecord;\nif (!Array.isArray(events)) throw new Error('Rendered digest has no event IDs to record');\nreturn events.map(event => ({json: {id: event.id, delivery_message_id: delivery.id}}));\n"
       },
       "disabled": false
+    },
+    {
+      "id": "3025082b-64b4-55b4-8edf-156e5c29e1b4",
+      "name": "Talent Alpha overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -420
+      ],
+      "parameters": {
+        "content": "# Talent Alpha\n## A daily head start for your sourcing research\nRead the main flow from left to right. It finds company changes, checks them against one open role, and sends you a short card with the evidence and a possible approach. You review the card and choose whether to act. The workflow never contacts candidates.",
+        "width": 5440,
+        "height": 240,
+        "color": 4
+      }
+    },
+    {
+      "id": "07c60984-f82f-5767-8370-00f235819070",
+      "name": "Stage 1 - Set the target",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -100
+      ],
+      "parameters": {
+        "content": "## 1. Set your target\n\nTell **Config** which role you are filling, which industries to watch, and what your company can actually offer.\n\nChoose when the scan runs. Your answers guide every later recommendation.",
+        "width": 520,
+        "height": 950,
+        "color": 4
+      }
+    },
+    {
+      "id": "d41dae4e-849e-52d0-95b0-2012fe1bc408",
+      "name": "Stage 2 - Find company changes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -100
+      ],
+      "parameters": {
+        "content": "## 2. Find recent company changes\n\nLook for two kinds of signal: official layoff notices and news about funding trouble or restructuring.\n\nThe two paths collect the stories, keep their dates and source links, and bring them together. Both source accounts need to work.",
+        "width": 800,
+        "height": 950,
+        "color": 5
+      }
+    },
+    {
+      "id": "797581bc-165c-57fd-922a-439cf9da344f",
+      "name": "Stage 3 - Skip repeats",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -100
+      ],
+      "parameters": {
+        "content": "## 3. Skip what you already received\n\nCheck the saved memory before spending time on a story. Only new source IDs continue.\n\nDifferent articles about the same company event can still appear separately.",
+        "width": 520,
+        "height": 950,
+        "color": 7
+      }
+    },
+    {
+      "id": "7f73193c-3d38-5b20-87ea-93e51911d912",
+      "name": "Stage 4 - Make a shortlist",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1880,
+        -100
+      ],
+      "parameters": {
+        "content": "## 4. Make a useful shortlist\n\nA quick first pass picks stories that could matter for your role. The next check ties each suggestion back to the original evidence.\n\nAn invented or unsupported company cannot become a recommendation.",
+        "width": 700,
+        "height": 950,
+        "color": 1
+      }
+    },
+    {
+      "id": "47e21e94-caba-5097-b8d5-44e67e8d895a",
+      "name": "Stage 5 - Check both sides",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2620,
+        -100
+      ],
+      "parameters": {
+        "content": "## 5. Check the opportunity from both sides\n\nOne reviewer makes the case for acting. Another challenges weak evidence, poor fit or an overconfident pitch.\n\nBoth must finish a review of every shortlisted story. A missing review stops the run.",
+        "width": 760,
+        "height": 1050,
+        "color": 2
+      }
+    },
+    {
+      "id": "8637c8fd-1f79-5f3c-a007-fc3afc517e42",
+      "name": "Stage 6 - Rank with care",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3420,
+        -100
+      ],
+      "parameters": {
+        "content": "## 6. Decide what deserves attention\n\nCombine both reviews and put stronger opportunities first. Fresher news breaks a tie.\n\nSharp disagreement is held for your review. The card is never padded just to reach a target count.",
+        "width": 520,
+        "height": 950,
+        "color": 4
+      }
+    },
+    {
+      "id": "1d60c8e5-41b7-5642-bafd-e9f41489d055",
+      "name": "Stage 7 - Build the card",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3980,
+        -100
+      ],
+      "parameters": {
+        "content": "## 7. Build your research card\n\nFor each company, show why now, a possible opening line, and an advantage your company can honestly offer.\n\nKeep the source links so you can check the story. Verify the finished card before sending it.",
+        "width": 520,
+        "height": 950,
+        "color": 6
+      }
+    },
+    {
+      "id": "c834103d-5f78-594b-901d-0d9a32d3de28",
+      "name": "Stage 8 - Deliver then remember",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4540,
+        -100
+      ],
+      "parameters": {
+        "content": "## 8. Deliver the card, then remember it\n\nEmail one digest to you. Only after email delivery is confirmed are its event IDs saved as seen.\n\nA failed send leaves the stories available for retry. If delivery is uncertain or saving memory fails, a retry may repeat a card.",
+        "width": 820,
+        "height": 950,
+        "color": 5
+      }
+    },
+    {
+      "id": "df100492-be76-5286-8a9e-21b8ee5a66d4",
+      "name": "Before the first run",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        960
+      ],
+      "parameters": {
+        "content": "## Before the first run\n\n1. Describe your company, open role and target industries in **Config**.\n2. Connect the two news sources, the AI account and your email account.\n3. Select the saved-memory table on both memory steps and set your own email address.\n4. Check the timezone, run a test card, and review its sources before turning on the daily schedule.\n\nThe demo uses sample stories and has email and memory writes switched off.",
+        "width": 1920,
+        "height": 440,
+        "color": 7
+      }
+    },
+    {
+      "id": "5b5fa664-95b8-5d7e-912a-bbe8999528ec",
+      "name": "When a step needs attention",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3980,
+        960
+      ],
+      "parameters": {
+        "content": "## When something needs attention\n\nA source, review or delivery failure stops the run. A failed source is never treated as a quiet news day.\n\nOpen **Executions** to see which step needs help. A working email account and a published error handler can also send you an alert. The workflow stays off until you activate it.",
+        "width": 1380,
+        "height": 440,
+        "color": 3
+      }
     }
   ],
   "connections": {
