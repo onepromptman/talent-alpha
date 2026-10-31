@@ -100,7 +100,7 @@ def js_round(x):
 def parse_timestamp(value):
     """Use UTC consistently, including dates and timestamps without an offset."""
     if not isinstance(value, str):
-        raise ValueError("published_at must be an ISO date or timestamp")
+        raise TypeError("published_at must be an ISO date or timestamp")
     dt = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=datetime.timezone.utc)
@@ -112,7 +112,7 @@ def age_days_of(published_at):
         return 999
     try:
         dt = parse_timestamp(published_at)
-    except ValueError:
+    except (ValueError, TypeError):
         return 999
     now = datetime.datetime.now(datetime.timezone.utc)
     delta = (now - dt).total_seconds() / 86400.0
@@ -150,7 +150,7 @@ def resolved_company(event, extracted):
 
 def index_unique(rows, key, label):
     if not isinstance(rows, list):
-        raise ValueError(f"{label} must be an array")
+        raise TypeError(f"{label} must be an array")
     result = {}
     for row in rows:
         if (
@@ -201,7 +201,7 @@ def event_problems(e):
     else:
         try:
             dt = parse_timestamp(published)
-        except (ValueError, AttributeError):
+        except (ValueError, TypeError):
             problems.append(f"unparseable published_at {published!r}")
         else:
             # A future date is not just wrong, it scores BEST: age_days_of

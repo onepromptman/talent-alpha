@@ -26,6 +26,7 @@ def cli(script, *args):
         capture_output=True,
         text=True,
         cwd=ROOT,
+        check=False,
     )
 
 
