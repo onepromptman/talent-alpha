@@ -68,7 +68,7 @@ before you trust it unattended. For an unattended nightly card today, use n8n.
 The plugin contains skills, agent prompts, and standard-library Python scripts.
 It uses the host Claude session's permitted web and file tools. The plugin has no
 mail integration or outreach step; its scripts write local artifacts and state.
-Python 3.9 or newer is required. The whole source is in this repository.
+Python 3.10 or newer is required. The whole source is in this repository.
 
 The card is about real layoffs and companies in real distress. Keep the framing
 respectful: it names companies and functions, never individuals.

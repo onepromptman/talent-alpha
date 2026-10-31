@@ -24,7 +24,7 @@ Agent pack (Claude plugin) and No-code (n8n) · No coding, some setup · In prep
 | | The plugin | The n8n workflow |
 | --- | --- | --- |
 | Runs in | Claude Code or Cowork (the Claude desktop app), not the regular chat window | n8n, Cloud or self-hosted, nightly |
-| You'll need | Claude Code or Cowork with agent tools, plus Python 3.9+. | An Anthropic API key, Gmail, a free WARN Firehose key; Perplexity optional |
+| You'll need | Claude Code or Cowork with agent tools, plus Python 3.10+. | An Anthropic API key, Gmail, a free WARN Firehose key; Perplexity optional |
 | Each run costs | Model use on your plan: a scanner, two judges, a checker | A scanner and two judges, billed to your Anthropic account |
 
 The plugin finds layoffs by web search (shown as Reported); n8n reads official WARN

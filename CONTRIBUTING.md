@@ -26,7 +26,7 @@ CI runs these, and any other checks it lists, in `.github/workflows/ci.yml`.
 
 ## House rules
 
-- Keep the scripts working on Python 3.9: they run on the user's own `python3`.
+- Keep the scripts working on Python 3.10: they run on the user's own `python3`.
 - No real candidate, employee or client data anywhere, including tests and examples.
 - Plain English in docs, short sentences, no em dashes.
 

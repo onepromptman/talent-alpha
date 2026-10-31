@@ -168,7 +168,7 @@ Check the exported file before declaring setup complete:
 <python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/render.py check-config --config talent-alpha-n8n-config.json
 ```
 
-Use an available Python 3.9+ interpreter. A missing sector, title or function
+Use an available Python 3.10+ interpreter. A missing sector, title or function
 is an actionable setup error, not a successful export. The n8n workflow does
 not import the plugin's min/max or funding-enabled preferences from this JSON;
 set those in n8n as documented in setup.md.

@@ -96,9 +96,9 @@ locations stay empty; never infer a city from the company's industry.
 
 Resolve the interpreter once, before this first script call: try `python3
 --version`, then `python --version`, then `py -3 --version`; use the first
-one that reports 3.9 or newer and call it `<python>` for every script call
+one that reports 3.10 or newer and call it `<python>` for every script call
 below. If none qualify, tell the user in one sentence that this kit needs
-Python 3.9+ on PATH (python.org has it) and stop, rather than running a
+Python 3.10+ on PATH (python.org has it) and stop, rather than running a
 script and surfacing a traceback.
 
 ```
