@@ -7,6 +7,21 @@ All notable changes to Talent Alpha. Format loosely follows
 
 ## [Unreleased]
 
+### Plugin reliability
+
+- The production `build` command requires complete, unique verdicts from both judges,
+  checks grounding and numeric claims, enforces the shipped content schema, renders and
+  verifies temporary artifacts, and only then publishes the card and records state.
+- Funding-company and location extraction must occur in source text. Original titles
+  and snippets travel to the judges and critic. ISO dates and naive timestamps use UTC.
+- Sharp S/C disagreement is held even in the first slot; the preferred minimum does not
+  override review. Dedupe removes repeated IDs within one batch as well as prior runs.
+- Setup exports and checks `targetSectors`; a local PROFILE-SPEC documents the standalone
+  profile. Scanner halts and unresolved critic findings stop downstream execution.
+- Contribution and release ownership are local to this standalone edition. The n8n
+  workflow files are unchanged; these fixes do not claim a live n8n validation.
+
+
 ### Changed
 
 - The README follows the house shape in about 600 words: who it is for, the tags, where

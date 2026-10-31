@@ -15,7 +15,7 @@ description: >
 # Talent Alpha: guided setup
 
 Reads and writes `onepromptman-profile.md`, the one profile file every
-OnePromptMan kit shares (see the marketplace's `PROFILE-SPEC.md`). This kit
+OnePromptMan kit shares (see `${CLAUDE_PLUGIN_ROOT}/PROFILE-SPEC.md`). This kit
 owns the `## Kit: talent-alpha` block: open role, leverage paragraph, signal
 sources, run tuning, byline, and the dedupe state file's path. It also fills
 the shared `## Organization`, `## Hiring`, and `## Brand` sections when they
@@ -157,9 +157,21 @@ Write `onepromptman-profile.md`:
   ran a research pass.
 
 Write `talent-alpha-n8n-config.json`: the exact
-`{"companyProfile": ..., "openRole": {"id","title","functions","location"}}`
-shape the workflow's `Config` node (`mode: raw`) expects. `companyProfile` is
-the kit's `leverage` paragraph verbatim; `openRole` is the kit's `open_role`.
+`{"targetSectors": "...", "companyProfile": "...", "openRole": {"id","title","functions","location"}}`
+shape the workflow's `Config` node (`mode: raw`) expects. `targetSectors` is
+the kit's `signal_sources` joined with commas. `companyProfile` is the
+`leverage` paragraph without its provenance suffix; `openRole` is the kit's
+`open_role`, with a stable local `id` (default `ROLE-01` if absent).
+Check the exported file before declaring setup complete:
+
+```
+<python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/render.py check-config --config talent-alpha-n8n-config.json
+```
+
+Use an available Python 3.9+ interpreter. A missing sector, title or function
+is an actionable setup error, not a successful export. The n8n workflow does
+not import the plugin's min/max or funding-enabled preferences from this JSON;
+set those in n8n as documented in setup.md.
 Tell the user, once, that pasting this file's contents into the `Config`
 node's Value field (Execute Mode: raw) is all the n8n workflow needs beyond
 credentials, if they ever want a real scheduled nightly run

@@ -69,7 +69,8 @@ def test_render_py_escapes_feed_and_model_text_and_attributes(tmp_path):
             str(src),
             "--out",
             str(out),
-            "--strict",
+            # Strict mode now rejects these invalid bands and wildcard types.
+            # Exercise the renderer's escaping even when called without that gate.
         ],
         cwd=str(SKILL_ROOT),
         capture_output=True,

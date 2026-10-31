@@ -13,7 +13,7 @@ candidate. A deterministic script (`scripts/render.py`) blends the two verdicts,
 sorts and trims the result, and fills the card template. No agent ever writes the
 final HTML. `advocate` and `skeptic` arguing opposite sides of the same candidate
 is independence of PASS, not the maker-not-checker tier fence: both run on the
-executor tier, same as `scanner`. The actual fence is `critic`, judging all three
+executor tier, same as `scanner`. The actual fence is `critic`, judging both verdict files
 on the verifier tier before anything reconciles (§3's maker-not-checker rule
 below); the model that made a thing never checks it.
 
@@ -69,7 +69,7 @@ Preflight for this kit specifically:
 
 {{rule:honesty-tiers}}
 
-You do not render this tag yourself (the script does, from `source_name`), but
+You do not render this tag yourself (the card links, from `source_name` and `source_url`), but
 your reasoning should respect it. A Skeptic finding staleness, a craft/location
 mismatch, or a thin Reported-tier source with no corroboration is doing its job,
 not being difficult.

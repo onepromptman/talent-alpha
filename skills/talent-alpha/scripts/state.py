@@ -105,7 +105,15 @@ def cmd_dedupe(args):
         events = json.load(f)
     state = load_state(args.state)
     seen = state["seen_events"]
-    fresh = [e for e in events if e.get("event_id") not in seen]
+    fresh = []
+    batch_ids = set()
+    for e in events:
+        event_id = e.get("event_id")
+        if not isinstance(event_id, str) or not event_id:
+            raise ValueError("every raw event needs a nonempty event_id")
+        if event_id not in seen and event_id not in batch_ids:
+            fresh.append(e)
+        batch_ids.add(event_id)
     skipped = len(events) - len(fresh)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(fresh, f, indent=2)
