@@ -99,7 +99,7 @@ An n8n workflow ships in this repository for a nightly card by email. It is a pr
 | | The plugin | The n8n workflow |
 | --- | --- | --- |
 | Runs in | Claude Code or Cowork, when you ask | n8n, Cloud or self-hosted, nightly |
-| You'll need | Claude Code or Cowork with web search, plus Python 3.10+ | An Anthropic API key, Gmail, a free WARN Firehose key; Perplexity optional |
+| You'll need | Claude Code or Cowork with web search, plus Python 3.10+ | Anthropic and Gmail; WARN Firehose for layoffs/closures, Perplexity for funding news. Disabled sources need no credential. |
 | Each run costs | Model use on your plan: a scanner, two judges, a checker | A scanner and two judges, billed to your Anthropic account |
 | Layoff source | Web search (shown as Reported) | Official WARN filings (shown as Filed) |
 

@@ -9,10 +9,8 @@ for (const r of rows) {
   const company = String(r.company_name || r.display_name || '').trim();
   if (!company || /\.pdf|\(pdf\)/i.test(company)) continue;
   if (r.id === undefined || r.id === null) throw new Error('WARN record has no ID');
-  const date = r.notice_date || r.effective_date;
-  if (!date || !Number.isFinite(Date.parse(date)) || Date.parse(date) > Date.now() + 86400000) {
-    throw new Error('WARN record has an invalid publication date');
-  }
+  // Preserve missing/bad dates for the common pre-scanner filter, as funding does.
+  const date = r.notice_date || r.effective_date || null;
   if (!/^https?:\/\/[^\s/]+/i.test(r.source_url || '')) throw new Error('WARN record has no checkable source URL');
   const affected = r.employees_affected ?? null;
   if (affected !== null && (!Number.isInteger(affected) || affected < 0)) throw new Error('WARN headcount is invalid');

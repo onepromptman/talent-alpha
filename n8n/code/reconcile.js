@@ -55,9 +55,11 @@ for (const t of trusted) {
   if (!String(config.companyProfile || '').trim() && a.edge.trim()) throw new Error('An edge requires a saved company profile');
   // Fit axes are scores, not card text; the plugin build rejects the same thing.
   if (/\b[A-Za-z]+_fit\b/.test([a.why, a.hook, a.edge].join(' '))) throw new Error('Card text names a fit axis for ' + t.id);
-  if (config.companyFacts) {
-    for (const [fact, axis] of [['size', 'size_fit'], ['stage', 'stage_fit']]) {
-      if (!String(config.companyFacts[fact] || '').trim() && (a[axis] !== 'M' || s[axis] !== 'M')) throw new Error('Unknown company ' + fact + ' must score M');
+  // There is no model repair lap in n8n. Missing structured facts are neutral,
+  // even if a judge inferred a size or stage from the pitch text.
+  for (const [fact, axis] of [['size', 'size_fit'], ['stage', 'stage_fit']]) {
+    if (!String(config.companyFacts?.[fact] || '').trim()) {
+      a[axis] = 'M'; s[axis] = 'M';
     }
   }
   const age = Math.max(0, Math.floor(Date.now() / 86400000) - Math.floor(Date.parse(t.published_at) / 86400000));

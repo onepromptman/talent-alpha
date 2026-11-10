@@ -17,7 +17,7 @@ const items = $input.all().map(i => i.json).filter(it => {
   if (criteria.eventTypes && !criteria.eventTypes.includes(it.event_type)) return false;
   if ((criteria.excludeCompanies || []).some(c => c.trim().toLowerCase() === String(it.company || '').trim().toLowerCase())) return false;
   const stamp = Date.parse(it.published_at);
-  if (!Number.isFinite(stamp) || stamp > Date.now() + 86400000) throw new Error('Invalid event date before scanner');
+  if (!Number.isFinite(stamp) || stamp > Date.now() + 86400000) return false;
   const limit = WINDOW_DAYS?.[it.event_type];
   if (Number.isInteger(limit) && Math.floor(Date.now() / 86400000) - Math.floor(stamp / 86400000) > limit) return false;
   if (!it.event_id) throw new Error('Event has no event_id');

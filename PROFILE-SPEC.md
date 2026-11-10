@@ -49,6 +49,10 @@ or missing, that axis is scored M, the stated neutral value, and `render.py
 build` rejects any other advocate score for it. Nothing infers a size or
 stage from pay, industry or tone.
 
+The target exporter appends `(stated by user)` to nonempty size/stage values in
+the Markdown profile. Empty facts stay empty, and exported n8n `companyFacts`
+values contain no added provenance suffix.
+
 For a partial setup, put `setup_incomplete: <first missing section>` directly
 under the kit heading. Remove it only after the required inputs are supplied.
 The state path is relative to the working folder unless absolute. Reuse the

@@ -49,6 +49,11 @@ def make_workflow(case):
             event["published_at"] = (today - datetime.timedelta(days=30)).isoformat()
     if case == "empty":
         raw = []
+    if case == "bad-date":
+        raw += [
+            dict(raw[0], event_id="missing-date", published_at=None),
+            dict(raw[1], event_id="invalid-date", published_at="not-a-date"),
+        ]
     profile = (ROOT / "evals/fixtures/onepromptman-profile.md").read_text(
         encoding="utf-8"
     )
@@ -71,6 +76,11 @@ def make_workflow(case):
     }
     if case == "bad-config":
         config["openRole"]["functions"] = []
+    if case == "unknown-facts":
+        config["companyFacts"] = {"size": "", "stage": ""}
+        config["companyProfile"] += " About 120 employees. Series B."
+    if case == "funding-only":
+        config["sourcingCriteria"] = {"eventTypes": ["funding_distress"]}
     nodes["Config"]["parameters"]["jsonOutput"] = json.dumps(config)
     trigger = nodes["Nightly 06:00 Scan"]
     trigger.update(type="n8n-nodes-base.manualTrigger", typeVersion=1, parameters={})
@@ -99,6 +109,11 @@ def make_workflow(case):
         "Skip Already-Scanned Events",
     ):
         stub(name, "return $input.all();")
+    if case == "funding-only":
+        stub(
+            "Fetch WARN Notices",
+            "throw new Error('Disabled WARN branch must not execute');",
+        )
     if case == "repeat":
         stub("Skip Already-Scanned Events", "return [];")
     shortlist = json.loads(
@@ -120,6 +135,8 @@ def make_workflow(case):
             (ROOT / "tests/fixtures/card-accuracy" / file).read_text(encoding="utf-8")
         )
         for verdict in verdicts["verdicts"]:
+            if case == "unknown-facts":
+                verdict.update(size_fit="H", stage_fit="L")
             for field in ("why", "hook", "edge"):
                 verdict[field] = re.sub(
                     r"2026-\d{2}-\d{2}",
@@ -175,6 +192,9 @@ def main():
             "bad-config",
             "bad-judge",
             "failed-send",
+            "unknown-facts",
+            "bad-date",
+            "funding-only",
         ],
     )
     args = parser.parse_args()

@@ -6,7 +6,9 @@ file changes. Shared profile sections and other kits are preserved verbatim.
 
 import argparse
 import json
+import os
 import re
+import tempfile
 from pathlib import Path
 
 from render import CONTENT_SCHEMA, config_problems, load, schema_problems
@@ -89,6 +91,11 @@ def activate(profile, config):
         else "talent-alpha-state.json"
     )
     facts = config.get("companyFacts", {})
+
+    def stated(key):
+        value = facts.get(key, "")
+        return value + " (stated by user)" if value.strip() else ""
+
     block = "\n".join(
         [
             "## Kit: talent-alpha",
@@ -96,8 +103,8 @@ def activate(profile, config):
             "sourcing_criteria: "
             + json.dumps(config.get("sourcingCriteria", {}), ensure_ascii=False),
             "leverage: " + config["companyProfile"] + " (stated by user)",
-            "company_size: " + facts.get("size", ""),
-            "company_stage: " + facts.get("stage", ""),
+            "company_size: " + stated("size"),
+            "company_stage: " + stated("stage"),
             "signal_sources: "
             + json.dumps(
                 [s.strip() for s in config["targetSectors"].split(",") if s.strip()],
@@ -122,6 +129,18 @@ def activate(profile, config):
     )
 
 
+def write_profile(path, text):
+    """Publish the complete profile before changing any Config exports."""
+    fd, name = tempfile.mkstemp(prefix=".talent-alpha-profile-", dir=path.parent)
+    os.close(fd)
+    temporary = Path(name)
+    try:
+        temporary.write_text(text, encoding="utf-8", newline="\n")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--targets", required=True, type=Path)
@@ -137,6 +156,8 @@ def main():
         if args.role and not selected:
             raise ValueError("unknown role ID")
         updated = activate(args.profile, selected) if selected else None
+        if selected:
+            write_profile(args.profile, updated)
         args.out_dir.mkdir(parents=True, exist_ok=True)
         for config in targets:
             dest = (
@@ -154,7 +175,6 @@ def main():
                 encoding="utf-8",
                 newline="\n",
             )
-            args.profile.write_text(updated, encoding="utf-8", newline="\n")
     except (ValueError, OSError, KeyError) as exc:
         parser.exit(1, f"setup error: {exc}\n")
     print(

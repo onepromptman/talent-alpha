@@ -49,6 +49,15 @@ def connection(node):
     return {"main": [[{"node": node, "type": "main", "index": 0}]]}
 
 
+def playbook_rules():
+    path = ROOT.parent / "skills/talent-alpha/references/03_TARGETING_PLAYBOOK.md"
+    heading = "## Apply the criteria every run"
+    _, separator, body = path.read_text(encoding="utf-8").partition(heading + "\n")
+    if not separator:
+        raise ValueError(f"{path.name}: missing required heading {heading!r}")
+    return body.split("At setup's end", 1)[0].strip()
+
+
 def build(source):
     workflow = copy.deepcopy(source)
     nodes = {n["name"]: n for n in workflow["nodes"]}
@@ -97,6 +106,7 @@ def build(source):
                 + code
             )
         nodes[name]["parameters"]["jsCode"] = code
+    rules = playbook_rules()
     for name, filename in CHAIN_PROMPTS.items():
         prompt = (
             (ROOT / "prompts" / filename)
@@ -104,15 +114,7 @@ def build(source):
             .split("\n---\n", 1)[1]
             .strip()
         )
-        playbook = (
-            ROOT.parent / "skills/talent-alpha/references/03_TARGETING_PLAYBOOK.md"
-        ).read_text(encoding="utf-8")
-        prompt += (
-            "\n\n"
-            + playbook.split("## Apply the criteria every run\n", 1)[1]
-            .split("At setup's end", 1)[0]
-            .strip()
-        )
+        prompt += "\n\n" + rules
         nodes[name]["type"] = "@n8n/n8n-nodes-langchain.chainLlm"
         nodes[name]["typeVersion"] = 1.7
         nodes[name]["parameters"] = {
@@ -144,7 +146,7 @@ def build(source):
     nodes["Sonnet Judge Model"]["parameters"]["options"]["maxTokensToSample"] = 8192
     funding = nodes["Fetch Funding-Distress Signals"]["parameters"]
     funding["query"] = (
-        "=Companies in {{ $('Config').first().json.targetSectors }} with work related to {{ $('Config').first().json.openRole.functions.join(', ') }} in {{ ($('Config').first().json.sourcingCriteria?.eligibleLocations || []).join(', ') || $('Config').first().json.openRole.location || 'any location' }} facing layoffs tied to funding distress, a down round, missed earnings, or restructuring, reported in the last 7 days as of {{ $today.toFormat('yyyy-MM-dd') }}. Priority context: {{ ($('Config').first().json.sourcingCriteria?.priorityTriggers || []).join(', ') }}. Exclude generic industry roundups, trackers, and archive pages; return dated single-company news stories with evidence of job impact."
+        "=Companies in {{ $('Config').first().json.targetSectors }} with work related to {{ $('Config').first().json.openRole.functions.join(', ') }} in {{ ($('Config').first().json.sourcingCriteria?.eligibleLocations || []).join(', ') || $('Config').first().json.openRole.location || 'any location' }} facing layoffs tied to funding distress, a down round, missed earnings, or restructuring, reported in the last 7 days as of {{ $today.toFormat('yyyy-MM-dd') }}. {{ ($('Config').first().json.sourcingCriteria?.priorityTriggers || []).length ? 'Priority context: ' + $('Config').first().json.sourcingCriteria.priorityTriggers.join(', ') + '. ' : '' }}Exclude generic industry roundups, trackers, and archive pages; return dated single-company news stories with evidence of job impact."
     )
 
     def add_node(name, node_type, version, parameters):
@@ -207,14 +209,37 @@ def build(source):
             "jsCode": "return [{json: {_emptyFeed: 'funding', event_id: '__talent_alpha_empty_funding'}}];"
         },
     )
+    warn_conditions = copy.deepcopy(nodes["Funding Enabled"]["parameters"])
+    warn_conditions["conditions"]["conditions"][0].update(
+        id="warn-enabled",
+        leftValue="={{ !$json.sourcingCriteria?.eventTypes || $json.sourcingCriteria.eventTypes.some(t => t === 'layoff' || t === 'shutdown') }}",
+    )
+    add_node("WARN Enabled", "n8n-nodes-base.if", 2.2, warn_conditions)
+    add_node(
+        "WARN Disabled",
+        "n8n-nodes-base.code",
+        2,
+        {
+            "jsCode": "return [{json: {_emptyFeed: 'warn', event_id: '__talent_alpha_empty_warn'}}];"
+        },
+    )
     workflow["connections"]["Config"] = connection("Validate Config")
     workflow["connections"]["Validate Config"] = {
         "main": [
             [
-                {"node": "Fetch WARN Notices", "type": "main", "index": 0},
+                {"node": "WARN Enabled", "type": "main", "index": 0},
                 {"node": "Funding Enabled", "type": "main", "index": 0},
             ]
         ]
+    }
+    workflow["connections"]["WARN Enabled"] = {
+        "main": [
+            [{"node": "Fetch WARN Notices", "type": "main", "index": 0}],
+            [{"node": "WARN Disabled", "type": "main", "index": 0}],
+        ]
+    }
+    workflow["connections"]["WARN Disabled"] = {
+        "main": [[{"node": "Merge Category Feeds", "type": "main", "index": 0}]]
     }
     workflow["connections"]["Funding Enabled"] = {
         "main": [

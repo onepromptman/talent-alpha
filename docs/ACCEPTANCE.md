@@ -127,7 +127,10 @@ import it with `n8n import:workflow --input=<scratch>/offline.json`, then execut
 `n8n execute --id=talent-alpha-offline-success --rawOutput`.
 
 Repeat with `warn-only`, `empty`, `stale`, `repeat`, `bad-config`, `bad-judge`
-and `failed-send`. Success reaches render and the fixture state adapter; WARN-only
+and `failed-send`. Also run `unknown-facts`, `bad-date` and `funding-only`.
+Unknown facts with nonneutral judge scores still render with neutral size/stage
+bands; malformed-date rows are dropped while valid rows complete the pipeline;
+funding-only never executes WARN fetch. Success reaches render and the fixture state adapter; WARN-only
 never executes funding fetch; empty/stale/repeat avoid model and mail calls.
 The final three fail before source calls, reconciliation, or state writes,
 respectively. Nothing in this fixture contacts a service or writes a real Data

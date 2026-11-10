@@ -33,7 +33,11 @@ n8n -> **Credentials** -> **New**, then attach each on the matching node(s):
 
 Only want WARN layoffs? Set `includeFundingDistress` to `false` in Config. The
 funding branch is bypassed without calling Perplexity; no graph editing or
-Perplexity credential is needed. WARN Firehose remains required for this workflow.
+Perplexity credential is needed. Only want funding-distress news? Set
+`sourcingCriteria.eventTypes` to `["funding_distress"]` and keep
+`includeFundingDistress` true. The WARN branch is bypassed without calling its
+API or requiring its credential. At least one event type must remain enabled;
+repeated entries do not enable an otherwise disabled source.
 
 ## 3. Create one Data Table
 
@@ -144,8 +148,15 @@ the new workflow from this repository.
    An event older than its source window (3 days for WARN, 7 for funding
    news) is dropped before model calls and checked again at **Trust-Boundary Join**. The demo workflow skips this,
    because its sample signals carry fixed dates.
+   Rows with missing, unparseable or more-than-a-day-future dates are also dropped
+   before scanning, so one malformed row does not discard the rest of a feed.
+   A failed source request or malformed response envelope still fails the run.
 3. **Judge** - an **Advocate** and a **Skeptic** (both Sonnet) independently argue
    each candidate on six axes and assign a tier.
+   Size and stage use only the explicit `companyFacts` fields, not the pitch.
+   If a field is missing or empty, reconciliation sets that axis to neutral M
+   for both judges instead of stopping the digest. The plugin retains its
+   reject-and-repair behavior.
 4. **Reconcile** - both judges must cover every trusted event exactly once. Their
    tiers are blended; freshness breaks ties. Sharp S/C disagreement is always held,
    and unsupported numeric claims fail the run. These checks do not prove news true.

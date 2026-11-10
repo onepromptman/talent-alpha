@@ -1,6 +1,7 @@
 const output = modelOutput($input.first().json);
 if (!output || !Array.isArray(output.opportunities)) throw new Error('Scanner did not return a valid shortlist');
 const trustedMap = $('Batch For Scanner Agent').first().json.itemsById;
+const config = $('Config').first().json;
 const seen = new Set();
 // WINDOW_DAYS is injected by n8n/tools/build_workflows.py from scripts/state.py: the days an
 // event stays reachable, by event_type. It is null in the demo export, whose samples are pinned.
@@ -25,7 +26,6 @@ for (const o of output.opportunities) {
   const limit = WINDOW_DAYS ? WINDOW_DAYS[base.event_type] : undefined;
   if (Number.isInteger(limit) && day(Date.now()) - day(stamp) > limit) continue;
   const company = base.company || (base.event_type === 'funding_distress' ? extracted(base, o.company) : '');
-  const config = $('Config').first().json;
   if ((config.sourcingCriteria?.excludeCompanies || []).some(c => c.trim().toLowerCase() === company.trim().toLowerCase())) continue;
   if (!company) throw new Error('Company extraction is not supported by source text: ' + o.id);
   if (!/^https?:\/\/[^\s/]+/i.test(base.source_url || '') || !base.source_name) throw new Error('Event has no checkable source: ' + o.id);

@@ -7,6 +7,8 @@ POSITIONS = {
     "Nightly 06:00 Scan": [0, 440],
     "Config": [240, 440],
     "Validate Config": [240, 680],
+    "WARN Enabled": [560, 100],
+    "WARN Disabled": [1080, 120],
     "Funding Enabled": [560, 840],
     "Funding Disabled": [800, 840],
     "Fetch WARN Notices": [560, 280],
@@ -70,7 +72,7 @@ NOTES = [
         (
             "## 2. Find recent company changes\n\nLook for two kinds of signal: official layoff notices and news about funding trouble or restructuring.\n\n"
             "The paths keep dates and source links. Set includeFundingDistress=false to bypass Perplexity without editing the graph. "
-            "WARN needs its source account; the funding account is needed only when enabled."
+            "Each source needs its account only when enabled. For funding-only, select just funding_distress in eventTypes; WARN is bypassed."
         ),
     ),
     (

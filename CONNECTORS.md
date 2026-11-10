@@ -56,7 +56,7 @@ in that category to trade away.
 | Credential | Required? | Attach to | What it buys |
 | --- | --- | --- | --- |
 | Anthropic | required | Haiku Scanner Model, Sonnet Judge Model | the model calls themselves |
-| WARN Firehose (header auth, free, 25 calls/day) | required -- the WARN category has no fallback in n8n the way it does in-session | Fetch WARN Notices | Filed-tier WARN data |
+| WARN Firehose (header auth, free, 25 calls/day) | required when layoff or shutdown is enabled | Fetch WARN Notices | Filed-tier WARN data; a funding-only eventTypes selection bypasses this branch |
 | Perplexity | optional | Fetch Funding-Distress Signals | a domain-filtered (cnbc.com, bloomberg.com, reuters.com, techcrunch.com, crunchbase.com), recency-filtered funding-distress feed. Set includeFundingDistress=false in Config to bypass this branch and run WARN-only without a Perplexity credential |
 | Gmail | required to receive the emailed card | Email Overnight Digest, Email Error Alert | the nightly delivery itself |
 | a Data Table (`talent_alpha_events_seen`) | required | Skip Already-Scanned Events, Record Scanned Events | dedupe memory across runs |

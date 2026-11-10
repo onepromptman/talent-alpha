@@ -2,6 +2,15 @@
 
 ## [1.5.0] (unreleased candidate): role-first daily sourcing, 2026-11-09
 
+- Follow-up review: n8n size/stage use structured company facts and normalize
+  unknown facts to neutral instead of aborting. Malformed-date feed rows are
+  filtered before models; source-envelope and trust-join failures remain errors.
+- Python and JS agree on disabled event types, including repeated entries.
+  Funding-only selections bypass WARN and its credential. Empty priority context
+  is omitted, and a renamed playbook heading produces an actionable build error.
+- Target activation atomically replaces the profile before changing Config
+  exports, and restores stated-by-user tags on size/stage Markdown fields.
+
 - Setup explains the priority model, asks which roles and geographies to target,
   proposes relevant signals and confirms a reusable sourcing plan per role.
 - Saved targets export validated n8n Config values and activate a plugin role

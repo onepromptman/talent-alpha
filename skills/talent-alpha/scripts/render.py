@@ -968,9 +968,12 @@ def config_problems(path):
                 isinstance(v, str) and not v.strip() for v in values
             ):
                 issues.append(f"sourcingCriteria.{key} cannot contain empty strings")
-        if config.get("includeFundingDistress") is False and criteria.get(
-            "eventTypes"
-        ) == ["funding_distress"]:
+        event_types = criteria.get("eventTypes")
+        if (
+            config.get("includeFundingDistress") is False
+            and isinstance(event_types, list)
+            and all(t == "funding_distress" for t in event_types)
+        ):
             issues.append("no enabled event types")
     return issues
 
