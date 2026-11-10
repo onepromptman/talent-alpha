@@ -5,8 +5,8 @@ description: >
   Advocate/Skeptic judge pair that turn WARN Act layoff notices and
   funding-distress news into a single ranked card of newly-reachable people
   for one open role, tiered S/A/B/C, each with a why-now, an outreach hook,
-  and a concrete company-leverage edge. A local dedupe memory means the same
-  layoff never resurfaces on a later run. Use when the user says "run talent
+  and a concrete company-leverage edge. A local dedupe memory skips previously
+  processed source IDs. Use when the user says "run talent
   alpha", "talent alpha", "scan for layoffs", "check for new signals", "run
   the overnight scan", "any new opportunities", wants a talent signal scan,
   or asks to see who just became reachable. For first-time setup, the
@@ -28,6 +28,20 @@ any outreach happens; nothing here contacts a candidate automatically.
 
 ## 0. Profile gate (always first)
 
+For a saved `talent-alpha-targets.json`, select the role the user names; if they
+say "all my targets", process each role separately. Otherwise use the active
+role in the profile and state it briefly. Only ask which role when the request
+is ambiguous. Activate each selected role before scanning:
+
+```text
+<python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/targets.py --targets talent-alpha-targets.json --out-dir . --role <id> --profile onepromptman-profile.md
+```
+
+Resolve Python as in step 2.2. Each role has its own card, run directory and
+state_file; never combine verdicts or suppress a role's events using another
+role's memory. Preserve the previously active role after an all-targets run.
+Older single-role profiles continue to work without a targets registry.
+
 Look for `onepromptman-profile.md` in the working folder, the profile shared
 by every OnePromptMan kit. Never hard-block on what it does not find.
 
@@ -35,9 +49,10 @@ by every OnePromptMan kit. Never hard-block on what it does not find.
   OnePromptMan kit here, and offer two paths: full setup
   (`talent-alpha-setup`) or the quick path, proceed now with a one-question
   minimum. On the quick path the company identity is still a hard gate: ASK
-  which company this scan is for and its signal-source industries via
-  AskUserQuestion, even if context or memory suggests an answer; never
-  auto-select. Nothing else is required to run a scan.
+  which company and open role (title, functions, location) this scan is for,
+  plus its signal-source industries via AskUserQuestion. Never auto-select.
+  Save those answers in a minimal profile per `${CLAUDE_PLUGIN_ROOT}/PROFILE-SPEC.md`;
+  leave unstated leverage empty. A scan needs a role to score against.
 - **Present, but no `## Kit: talent-alpha` block.** Another kit's setup ran
   here first. Say so in one line ("I have a profile for [company] but not
   Talent Alpha's own settings yet") and offer the same two paths: full setup
@@ -53,29 +68,44 @@ block. Read the kit block's `state_file` value for step 2.2 below (default
 `talent-alpha-state.json` if the field is absent, e.g. on a quick-path run
 with no profile at all).
 
-Two variables recur below: `COMPANY_PROFILE` is the kit block's `leverage`
-paragraph verbatim; `OPEN_ROLE` is the kit block's `open_role` (or, on the
-quick path, whatever the one-question minimum above collected) as JSON
-(`title`, `functions`, `location`).
+Four variables recur below: `COMPANY_PROFILE` is the kit block's `leverage`
+paragraph verbatim; `COMPANY_FACTS` is `{"size": ..., "stage": ...}` from the
+kit block's optional `company_size` and `company_stage` (provenance tags
+dropped, an empty string when absent); `OPEN_ROLE` is the kit block's
+`open_role` (or, on the quick path, whatever the one-question minimum above
+collected) as JSON (`title`, `functions`, `location`); `RUN_DATE` is today's
+date in UTC as YYYY-MM-DD, unless the user or an evaluation fixes the run date.
+Every event age on the card counts whole days to `RUN_DATE`.
+
+`SOURCING_CRITERIA` is the kit's `sourcing_criteria` JSON (empty object on older
+profiles). Read `references/03_TARGETING_PLAYBOOK.md` and include these criteria
+in every scanner, judge and critic briefing. They govern seniority, skills,
+eligible geography, work arrangement, event types, triggers and exclusions.
 
 ## 1. Plan
 
 Create `talent-alpha-runs/<YYYY-MM-DD>/` if it does not exist (never overwrite
 a prior run folder; append a `-2`, `-3` suffix on a same-day re-run). Before
-pulling anything, invite context in ONE plain message, never a chip question:
-"Anything you want me to weight toward this run, target companies to watch
-for, a role variant, or say skip." File pasted text verbatim to
+pulling anything, state: "Using your saved role and priorities for this scan."
+Apply context already supplied with the request; do not pause a daily run for
+an optional question. File additional pasted text verbatim to
 `<run folder>/inputs/braindump-<YYYY-MM-DD>.md`; this is optional and
 skippable at zero cost.
 
-Confirm, in the same message or a short follow-up, two run parameters with
-safe stated defaults if the user does not answer: how many candidates to show
-(`--min-shown 4 --max-shown 10`, matching the n8n workflow's defaults) and
-whether to run funding-distress in addition to WARN (default: both).
+Use the saved `max_shown` and `include_funding_distress` unless overridden for
+this run (defaults 10 and true for older profiles). A sharp judge disagreement
+is held whatever the count. Do not ask for these settings again on each run.
 
 ## 2. Execute
 
 ### 2.1 Pull
+
+Check that native web search is available before pulling; if missing, stop and
+explain how to enable it or use n8n. Tool failure is not a quiet day. Use the
+role's functions, confirmed sectors, eligible locations and priority triggers
+in the search plan. Search adjacent domains when the saved plan calls for them.
+Skip disabled event types and company exclusions. If funding is disabled, do
+not perform that search. Do not expand a remote role beyond its stated geography.
 
 Two categories, per `references/02_SOURCING_MATRIX.md`. In-session, BOTH run
 via WebSearch (see that file for why WebFetch cannot substitute for an
@@ -87,6 +117,9 @@ Firehose feed for a Reported-tier WebSearch equivalent, at zero paid-key
 cost. Normalize every
 result per `references/EVENT_PIPELINE_SCHEMA.md` §1 and write the merged
 array to `<run folder>/raw_events.json`.
+Keep each result's original title, snippet, date and URL. A funding company
+extracted later by the scanner must occur in that title or snippet. Unknown
+locations stay empty; never infer a city from the company's industry.
 
 ### 2.2 Dedupe (state file, read before, write after)
 
@@ -101,51 +134,57 @@ script and surfacing a traceback.
 <python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/state.py dedupe \
   --events <run folder>/raw_events.json \
   --state <state_file, default talent-alpha-state.json> \
+  --as-of <RUN_DATE> \
   --out <run folder>/new_events.json
 ```
+
+Dedupe drops ids already in the state file and every event older than its
+source window on `RUN_DATE` (3 days for WARN layoffs and shutdowns, 7 for
+funding distress); it prints both counts and names each out-of-window event.
+A web search often returns older articles, so a few drops are normal.
 
 The state file lives at the working-folder root, not the run folder, so it
 survives across runs; full design in `scripts/state.py`'s own docstring. Its
 path is recorded in the profile's `## Kit: talent-alpha` block as
 `state_file` (default `talent-alpha-state.json`) so a future relocation is a
 one-line profile edit, not a hunt through this skill. If `new_events.json` is
-empty, stop here and tell the user plainly:
-nothing new since the last run. Do not spawn any agent on an empty batch.
+empty, stop here and distinguish what happened: no feed results, only previously
+seen IDs, only stale events, or no events matching the selected types/exclusions.
+Use the actual counts, not "nothing new" for a failed search. Do not spawn any
+agent on an empty batch.
 
 ### 2.3 Scanner (sequential, before the judges)
 
 Spawn `talent-alpha:scanner` with: the run folder, `<run folder>/new_events.json`,
 `COMPANY_PROFILE`, `OPEN_ROLE`. It writes `<run folder>/shortlist.json`.
 
-**NEED_INPUT.** If `scanner` halts on `cheapest_fix: ask_user`, do not re-spawn
-it yet: hold its `missing[]` items and continue to 2.5 rather than stopping
-here, so a scanner halt and a judge halt land in the same consolidated ask
-(below). If nothing downstream also halts, put scanner's items to the user
-now in one AskUserQuestion pass, then re-spawn `talent-alpha:scanner` alone with the
-answers folded in and resume from here.
+**NEED_INPUT.** If `scanner` halts on `cheapest_fix: ask_user`, batch its
+missing items into one AskUserQuestion pass, then resume the scanner with
+the answers. Do not start the join or judges until shortlist.json exists
+and the scanner has completed; downstream agents cannot review a missing artifact.
 
 ### 2.4 Trust-boundary join (deterministic, never an agent)
 
 ```
 <python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/render.py join \
   --raw <run folder>/new_events.json --shortlist <run folder>/shortlist.json \
-  --out <run folder>/trusted_candidates.json
+  --as-of <RUN_DATE> --out <run folder>/trusted_candidates.json
 ```
 
 Drops any id the scanner invented. Read the printed drop count; if it is
 more than a couple, that is worth a line in your completion report, not
-silence.
+silence. If the trusted batch is empty, report that no new events were relevant
+to this role and stop without spawning judges or recording state.
 
 ### 2.5 Judges (BOTH PARALLEL, one message)
 
 Spawn `talent-alpha:advocate` and `talent-alpha:skeptic` together, in the same message, each with:
 the run folder, `<run folder>/trusted_candidates.json`, `COMPANY_PROFILE`,
-`OPEN_ROLE`. Neither gets the other's output. They write
+`COMPANY_FACTS`, `OPEN_ROLE`, `RUN_DATE`. Neither gets the other's output. They write
 `advocate_verdicts.json` and `skeptic_verdicts.json` respectively.
 
 **NEED_INPUT.** If either judge halts on `cheapest_fix: ask_user`, do not
-re-spawn anything yet. Batch every `ask_user` item from `advocate`, `skeptic`,
-and any held-over `scanner` items from 2.3 into ONE consolidated
+re-spawn anything yet. Batch every `ask_user` item from `advocate` and `skeptic` into ONE consolidated
 AskUserQuestion pass, each item with its own `why_needed`. Put that to the
 user once, then re-spawn only the agents that actually halted, with the
 answers folded in, and resume the pipeline from wherever it stopped. Never a
@@ -156,54 +195,58 @@ question at a time, and never re-spawn an agent that already returned clean.
 Spawn `talent-alpha:critic` twice, in one message: once on `advocate_verdicts.json`
 (rubric: the six fit axes and tier scale, plus `agents/advocate.md`'s own
 brief), once on `skeptic_verdicts.json` (same axes, `agents/skeptic.md`'s
-brief), each with `trusted_candidates.json` and `COMPANY_PROFILE` as
-grounding. One REFUTE pass per verdict file, three angles (grounding,
-honesty, contract, per `agents/critic.md`). Critic returns `PASS` or
-`RETURNED` with findings; it holds no write tool and edits nothing. On
-`RETURNED`: route the findings to the owning judge (`advocate` or `skeptic`)
-as a patch instruction (the finding text is the only added context; the
-judge re-emits its verdicts file), then
-re-spawn `talent-alpha:critic` on the patched file. At most two repair laps per verdict
-file. If still `RETURNED` after two laps, carry the remaining findings
-forward honestly into the completion report; never suppress them and never
-reconcile an unreviewed verdict silently.
+brief), each with `trusted_candidates.json`, `COMPANY_PROFILE`, `COMPANY_FACTS`,
+`OPEN_ROLE` and `RUN_DATE` as grounding. One REFUTE pass per verdict file, three
+angles (grounding, honesty, contract, per `agents/critic.md`). Critic returns
+`PASS` or `RETURNED` with findings; it holds no write tool and edits nothing.
+`RETURNED` means any HIGH finding, any MED finding on a `why`, `hook` or `edge`
+slot (those ship on the card verbatim), or three or more MED; LOW is advisory.
 
-### 2.6 Reconcile and render (deterministic)
+On `RETURNED`: first copy the verdict file to `<run folder>/laps/<judge>_verdicts.lap<N>.json`
+(lap 0 is the judge's first file), so the pre-repair tiers stay on record. Then
+route the findings to the owning judge (`advocate` or `skeptic`) as a patch
+instruction: "Fix each finding by removing the ungrounded claim; do not
+substitute an inference, and do not explain a score in why, hook or edge." The
+finding text is the only added context; the judge re-emits its verdicts file.
+Then re-spawn `talent-alpha:critic` on the patched file. At most two repair laps
+per verdict file. If still `RETURNED` after two laps, stop the build and report
+the remaining findings with the draft artifact paths. Do not render a reviewed
+card or record those events as seen until the blocking findings are resolved.
+
+The sharp-disagreement hold (2.6) compares the verdicts that passed the critic,
+not the lap-0 drafts. That is deliberate: a tier the critic found ungrounded is
+not a disagreement worth a human's review, and the lap files keep the earlier
+tiers for anyone auditing the run. Name any tier a repair changed in the
+completion report.
+
+### 2.6 Build the checked card and record state (deterministic)
 
 ```
-<python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/render.py reconcile \
+<python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/render.py build \
+  --raw <run folder>/new_events.json \
   --trusted <run folder>/trusted_candidates.json \
   --advocate <run folder>/advocate_verdicts.json \
   --skeptic <run folder>/skeptic_verdicts.json \
+  --profile <working folder>/onepromptman-profile.md \
+  --state <state_file, default talent-alpha-state.json> \
   --author "<Kit block's author, or 'Your name'>" \
   --company-name "<Organization's name>" \
   --role-title "<OPEN_ROLE.title>" --role-location "<OPEN_ROLE.location>" \
-  --min-shown <N> --max-shown <N> \
-  --out <run folder>/content.json
-
-<python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/render.py render \
-  --template ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/references/templates/overnight_card.template.html \
-  --content <run folder>/content.json --out <run folder>/overnight_card.html --strict
-
-<python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/render.py verify --doc <run folder>/overnight_card.html
+  --max-shown <N> --as-of <RUN_DATE> \
+  --out <run folder>/content.json --html <run folder>/overnight_card.html
 ```
 
-`--strict` fails the render (exit 1, nothing written) when a required field
-is missing rather than shipping a blanked region. A render or verify failure
-routes back to whichever agent (`scanner`, `advocate`, or `skeptic`) owns the
-missing field as a patch instruction, never to hand-editing the HTML.
+`build` requires a complete, unique verdict from both judges for every trusted
+candidate. It runs accuracy checks, validates against the shipped content schema,
+renders to temporary files, and verifies the HTML before publishing either output
+and recording shown and held IDs. A failed check leaves the state and any previous
+card untouched. Sharp S/C disagreement is held even in the first slot. It also
+rejects a `why`, `hook` or `edge` that names a fit axis, and an advocate
+`size_fit` or `stage_fit` other than M when `COMPANY_FACTS` lacks that fact.
 
-### 2.7 Record state (after, not before, a successful render)
-
-```
-<python> ${CLAUDE_PLUGIN_ROOT}/skills/talent-alpha/scripts/state.py record \
-  --candidates <run folder>/content.json \
-  --state <state_file, default talent-alpha-state.json>
-```
-
-Marks every candidate this run reconciled (shown AND held) as seen. Only run
-this after `render` succeeds: a crashed run should not mark events seen that
-were never actually judged.
+Route a failure back to the producer with its diagnostic. Do not bypass a failed
+build by calling the low-level render or state-record commands. Those commands
+remain available for development and the frozen eval, not as a production shortcut.
 
 ## 3. Deliver
 

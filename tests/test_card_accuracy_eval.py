@@ -37,6 +37,9 @@ EVAL_FIXTURES = MODULE_ROOT / "evals" / "fixtures"
 RAW_EVENTS = EVAL_FIXTURES / "raw_events.json"
 STATE_FIXTURE = EVAL_FIXTURES / "talent-alpha-state.json"
 PROFILE_FIXTURE = EVAL_FIXTURES / "onepromptman-profile.md"
+# The fixture events are dated 2026-09-05..07; every run against them is dated 2026-09-07
+# so ages, the window note and the dedupe window agree (tools/demo.py pins the same date).
+FIXTURE_AS_OF = "2026-09-07"
 
 TEST_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "card-accuracy"
 SHORTLIST_FIXTURE = TEST_FIXTURES / "shortlist.json"
@@ -70,6 +73,8 @@ def _reconcile(
         [
             "scripts/render.py",
             "reconcile",
+            "--as-of",
+            FIXTURE_AS_OF,
             "--trusted",
             str(trusted),
             "--advocate",
@@ -110,6 +115,8 @@ def _build_shaped_run(tmp_path, skeptic_verdicts=None, min_shown=4, max_shown=10
         [
             "scripts/state.py",
             "dedupe",
+            "--as-of",
+            FIXTURE_AS_OF,
             "--events",
             str(RAW_EVENTS),
             "--state",
@@ -126,6 +133,8 @@ def _build_shaped_run(tmp_path, skeptic_verdicts=None, min_shown=4, max_shown=10
         [
             "scripts/render.py",
             "join",
+            "--as-of",
+            FIXTURE_AS_OF,
             "--raw",
             str(new_events),
             "--shortlist",
@@ -176,6 +185,28 @@ def _validate(content_path, extra_args=()):
     )
 
 
+@pytest.mark.parametrize("mutation", ["bands", "wildcard", "missing_field"])
+def test_saved_card_rejects_changed_diagram_or_incomplete_schema(tmp_path, mutation):
+    content_path, _, _ = _build_shaped_run(tmp_path)
+    content = json.loads(content_path.read_text(encoding="utf-8"))
+    candidate = content["candidates"][0]
+    if mutation == "bands":
+        candidate["bands"] = ["L"] * 6
+    elif mutation == "wildcard":
+        candidate["wildcard"] = {
+            "fired": True,
+            "axis_index": 2,
+            "bridge": "A bridge the judge never proposed",
+        }
+    else:
+        del candidate["bands"]
+    content_path.write_text(json.dumps(content), encoding="utf-8")
+    result = _validate(content_path)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "finding" in result.stdout
+    assert "Traceback" not in result.stderr
+
+
 # --------------------------------------------------------------------- fixture pins
 
 
@@ -187,6 +218,8 @@ def test_dedupe_drops_exactly_the_seeded_event(tmp_path):
         [
             "scripts/state.py",
             "dedupe",
+            "--as-of",
+            FIXTURE_AS_OF,
             "--events",
             str(RAW_EVENTS),
             "--state",
@@ -211,6 +244,8 @@ def test_join_drops_nothing_from_the_shaped_shortlist(tmp_path):
         [
             "scripts/state.py",
             "dedupe",
+            "--as-of",
+            FIXTURE_AS_OF,
             "--events",
             str(RAW_EVENTS),
             "--state",
@@ -225,6 +260,8 @@ def test_join_drops_nothing_from_the_shaped_shortlist(tmp_path):
         [
             "scripts/render.py",
             "join",
+            "--as-of",
+            FIXTURE_AS_OF,
             "--raw",
             str(new_events),
             "--shortlist",
@@ -278,16 +315,15 @@ def test_validate_card_passes_on_the_shaped_positive_fixture(tmp_path):
 
 
 def test_validate_card_fails_on_skipped_skeptic_verdict(tmp_path):
-    """A skeptic verdict missing for one id renders a perfectly normal-looking card
-    (render.py falls back to the advocate's own tier); validate_card.py must catch it from
-    the raw verdict files, which the card itself cannot reveal."""
+    """The validator also detects a verdict removed after a successful reconcile."""
     full_skeptic = json.loads(SKEPTIC_FIXTURE.read_text(encoding="utf-8"))
     dropped_id = full_skeptic["verdicts"][-1]["id"]
     truncated = {
         "verdicts": [v for v in full_skeptic["verdicts"] if v["id"] != dropped_id]
     }
 
-    content_path, _adv, _skp = _build_shaped_run(tmp_path, skeptic_verdicts=truncated)
+    content_path, _adv, skeptic_path = _build_shaped_run(tmp_path)
+    skeptic_path.write_text(json.dumps(truncated), encoding="utf-8")
     proc = _validate(content_path)
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert f"no skeptic verdict for id {dropped_id!r}" in proc.stdout
@@ -421,6 +457,8 @@ def test_validate_card_fails_on_seen_event_id(tmp_path):
         [
             "scripts/render.py",
             "join",
+            "--as-of",
+            FIXTURE_AS_OF,
             "--raw",
             str(RAW_EVENTS),  # undeduped -- the bug this check exists to catch
             "--shortlist",
@@ -467,13 +505,18 @@ def test_validate_card_fails_on_seen_event_id(tmp_path):
 def test_validate_card_warns_on_small_batch(tmp_path):
     """Fewer than 5 candidates on the card is a WARNING, never a finding: a row-count floor
     above what a slow night's data actually supports would force invention (EVAL_TUNING's
-    row-floor lesson). Slicing to the first 2 of the shaped fixture's 5 sorted candidates
+    row-floor lesson). Keeping the first 2 candidates and their matching judge records
     keeps every other check clean (idx 0/1 are shown either way, below both --min-shown 4
     and --max-shown 10), isolating this one."""
-    content_path, _adv, _skp = _build_shaped_run(tmp_path)
+    content_path, advocate_path, skeptic_path = _build_shaped_run(tmp_path)
     content = json.loads(content_path.read_text(encoding="utf-8"))
     content["candidates"] = content["candidates"][:2]
     content_path.write_text(json.dumps(content), encoding="utf-8")
+    ids = {c["id"] for c in content["candidates"]}
+    for path in (advocate_path, skeptic_path):
+        verdicts = json.loads(path.read_text(encoding="utf-8"))
+        verdicts["verdicts"] = [v for v in verdicts["verdicts"] if v["id"] in ids]
+        path.write_text(json.dumps(verdicts), encoding="utf-8")
 
     proc = _validate(content_path)
     assert proc.returncode == 0, proc.stdout + proc.stderr
@@ -530,11 +573,14 @@ def test_prompt_pins_model_and_excludes_web_tools():
     """`prompt.md` pins `model:` (ANTHROPIC_MODEL is not inherited by eval runs) and does
     not add WebSearch/WebFetch to allowed_tools (the run makes no web queries; the eval's
     own graders assert zero calls to either)."""
-    # function-core is fetched at the core.lock pin (tools/fetch_core.py), not vendored;
-    # tools/gates.sh exports FUNCTION_CORE_DIR for the evaluate run.
+    # Function Core is not vendored into this repository. Point FUNCTION_CORE_DIR at a
+    # local Function Core checkout to run this case (docs/ACCEPTANCE.md, TA-04).
     fc = os.environ.get("FUNCTION_CORE_DIR")
     if not fc:
-        pytest.skip("FUNCTION_CORE_DIR not set; run via tools/gates.sh")
+        pytest.skip(
+            "FUNCTION_CORE_DIR not set; point it at a local Function Core checkout "
+            "(docs/ACCEPTANCE.md, TA-04)"
+        )
     core_build = Path(fc) / "build"
     if str(core_build) not in sys.path:
         sys.path.insert(0, str(core_build))
@@ -542,6 +588,7 @@ def test_prompt_pins_model_and_excludes_web_tools():
 
     case = eval_runner.load_case(CASE_DIR)
     assert case.model == "claude-sonnet-5"
+    assert {"Read", "Agent", "Bash"} <= set(case.allowed_tools)
     assert "WebSearch" not in case.allowed_tools
     assert "WebFetch" not in case.allowed_tools
 
@@ -606,28 +653,28 @@ def test_spawn_grader_matches_namespaced_and_bare_subagent_type(grader_file, age
         )
 
 
-# --------------------------------------------------------------------- state.py record (item 8)
+# --------------------------------------------------------------------- checked build and state
 
 
-def test_prompt_pins_the_state_record_step():
+def test_prompt_pins_the_checked_build_step():
     """SKILL.md 2.7 records this run's reconciled candidates as seen after a successful
     render; the eval's own prompt must exercise that write, not just the dedupe READ at
     step 3, or the next run's dedupe is untested."""
     text = (CASE_DIR / "prompt.md").read_text(encoding="utf-8")
-    assert "state.py record" in text
-    assert "--candidates" in text
+    assert "render.py build" in text
+    assert "--raw <run folder>/new_events.json" in text
     assert "--state ./talent-alpha-state.json" in text
 
 
-def test_case_declares_a_state_record_grader():
+def test_case_declares_a_checked_build_grader():
     """A `tool_used` Bash grader with `min >= 1` pins that the run actually called
-    `state.py record`, not merely that the prompt asked it to."""
+    `render.py build`, which records state only after verification succeeds."""
     matches = [
         g
         for g in (CASE_DIR / "graders").glob("*.md")
-        if "tool: Bash" in g.read_text(encoding="utf-8") and "record" in _input_match(g)
+        if "tool: Bash" in g.read_text(encoding="utf-8") and "build" in _input_match(g)
     ]
-    assert matches, "expected a tool_used Bash grader pinning the state.py record step"
+    assert matches, "expected a tool_used Bash grader pinning the checked build step"
     for g in matches:
         text = g.read_text(encoding="utf-8")
         m = re.search(r"^min:\s*(\d+)\s*$", text, re.MULTILINE)
@@ -668,3 +715,20 @@ def test_published_at_pool_is_date_only_not_the_clock(tmp_path):
     assert f"states a figure not in the pull or profile: {hour}" in proc.stdout, (
         proc.stdout
     )
+
+
+@pytest.mark.parametrize("judge", ["advocate", "skeptic"])
+@pytest.mark.parametrize("mutation", ["duplicate", "extra"])
+def test_saved_card_rejects_ambiguous_judge_coverage(tmp_path, judge, mutation):
+    content_path, advocate_path, skeptic_path = _build_shaped_run(tmp_path)
+    path = advocate_path if judge == "advocate" else skeptic_path
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    extra = dict(payload["verdicts"][0])
+    if mutation == "extra":
+        extra["id"] = "not-on-this-card"
+    payload["verdicts"].append(extra)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    result = _validate(content_path)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "finding" in result.stdout
+    assert "Traceback" not in result.stderr

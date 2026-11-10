@@ -6,7 +6,7 @@
     "role_title": "Manufacturing Process Engineer",
     "role_location": "Austin, TX, on-site",
     "scanned_count": 6,
-    "window_note": "72h window"
+    "window_note": "WARN: 3d; funding news: 7d; ages as of 2026-08-24"
   },
   "candidates": [
     {
@@ -15,13 +15,13 @@
       "location": "Austin, TX",
       "employees_affected": 140,
       "event_type": "layoff",
-      "event_age_label": "6h ago",
+      "event_age_label": "today",
       "age_days": 0,
       "titles": ["Manufacturing Engineer", "Process Engineer", "Quality Engineer"],
       "tier": "S",
       "bands": ["H", "H", "M", "H", "H", "H"],
       "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
-      "why": "Named layoff at a directly comparable hardware employer, hours old.",
+      "why": "Named layoff at a directly comparable hardware employer, filed on the run date.",
       "hook": "Saw the news about Northwind, wanted to reach out directly rather than wait for a posting.",
       "edge": "Comp band matches metro market for senior process engineers; relocation package covers moving costs plus 60 days of housing.",
       "held": false,
@@ -35,7 +35,7 @@
       "location": "Austin, TX",
       "employees_affected": null,
       "event_type": "funding_distress",
-      "event_age_label": "20h ago",
+      "event_age_label": "today",
       "age_days": 0,
       "titles": ["Manufacturing Engineer", "Mechanical Test Engineer"],
       "tier": "A",

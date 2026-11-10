@@ -1,9 +1,8 @@
 ---
 type: tool_used
 tool: Bash
-input_match: 'state\.py\s+record'
+input_match: 'render\.py[^a-zA-Z0-9_]+build'
 min: 1
 ---
-SKILL.md 2.7 records this run's reconciled candidates as seen after a successful render;
-the dedupe READ (state.py dedupe) is already exercised at step 3, but the WRITE that makes
-the next run's dedupe actually work is not, unless this call happens too.
+The production build command validates, renders and verifies before recording state.
+A low-level state-record call alone does not satisfy this gate.

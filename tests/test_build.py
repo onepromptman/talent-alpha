@@ -10,7 +10,9 @@ to them (subprocess, not import), matching talent-one's tests/test_build.py.
 
 from __future__ import annotations
 
+import datetime
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -183,6 +185,123 @@ def test_state_dedupe_then_record_round_trip(tmp_path):
     )
 
 
+def test_pruned_old_event_cannot_come_back_as_new(tmp_path):
+    """The 2026-11-06 plugin rerun: the fixture's seen id warn-099888 (event dated
+    2026-08-20) was pruned from state after 30 days, and the next dedupe admitted the
+    same event as new. Dedupe now drops any event older than its source window on
+    the run date, so a pruned id stays out; the 30-day prune itself is unchanged."""
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+
+    def day(n):
+        return (today - datetime.timedelta(days=n)).isoformat()
+
+    state_path = tmp_path / "talent-alpha-state.json"
+    old_stamp = (today - datetime.timedelta(days=40)).isoformat() + "T06:00:00Z"
+    state_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "seen_events": {"warn-old": {"first_seen_at": old_stamp}},
+                "last_run_at": old_stamp,
+            }
+        ),
+        encoding="utf-8",
+    )
+    candidates_path = tmp_path / "content.json"
+    candidates_path.write_text(
+        json.dumps({"candidates": [{"id": "warn-new", "company": "Acme"}]}),
+        encoding="utf-8",
+    )
+    record = run(
+        [
+            "scripts/state.py",
+            "record",
+            "--candidates",
+            str(candidates_path),
+            "--state",
+            str(state_path),
+        ],
+        cwd=SKILL_ROOT,
+    )
+    assert record.returncode == 0, record.stdout + record.stderr
+    assert "1 pruned" in record.stdout
+    seen = json.loads(state_path.read_text(encoding="utf-8"))["seen_events"]
+    assert set(seen) == {"warn-new"}, "the 30-day prune must still drop warn-old"
+
+    events = [
+        {"event_id": "warn-old", "event_type": "layoff", "published_at": day(41)},
+        {"event_id": "warn-3d", "event_type": "layoff", "published_at": day(3)},
+        {"event_id": "warn-4d", "event_type": "shutdown", "published_at": day(4)},
+        {
+            "event_id": "fund-7d",
+            "event_type": "funding_distress",
+            "published_at": day(7),
+        },
+        {
+            "event_id": "fund-8d",
+            "event_type": "funding_distress",
+            "published_at": day(8),
+        },
+        {"event_id": "warn-new", "event_type": "layoff", "published_at": day(0)},
+        {"event_id": "warn-nodate", "event_type": "layoff", "published_at": "soon"},
+    ]
+    events_path = tmp_path / "raw_events.json"
+    events_path.write_text(json.dumps(events), encoding="utf-8")
+    out = tmp_path / "new_events.json"
+    dedupe = run(
+        [
+            "scripts/state.py",
+            "dedupe",
+            "--events",
+            str(events_path),
+            "--state",
+            str(state_path),
+            "--out",
+            str(out),
+        ],
+        cwd=SKILL_ROOT,
+    )
+    assert dedupe.returncode == 0, dedupe.stdout + dedupe.stderr
+    fresh = [e["event_id"] for e in json.loads(out.read_text(encoding="utf-8"))]
+    # An unparseable date is passed on: the trust-boundary join rejects it by name.
+    assert fresh == ["warn-3d", "fund-7d", "warn-nodate"]
+    assert "1 already seen, 3 outside the source window" in dedupe.stdout
+    for dropped in ("warn-old (41d old", "warn-4d (4d old", "fund-8d (8d old"):
+        assert f"outside window: {dropped}" in dedupe.stdout
+
+
+def test_frozen_fixture_needs_its_run_date(tmp_path):
+    """The eval fixture is dated 2026-09-05..07. Run as of 2026-09-07 every unseen
+    event is in its window; run as of today none is, and dedupe says so."""
+    fixtures = MODULE_ROOT / "evals" / "fixtures"
+    results = {}
+    for as_of in ("2026-09-07", None):
+        out = tmp_path / f"new-{as_of}.json"
+        cmd = [
+            "scripts/state.py",
+            "dedupe",
+            "--events",
+            str(fixtures / "raw_events.json"),
+            "--state",
+            str(fixtures / "talent-alpha-state.json"),
+            "--out",
+            str(out),
+        ]
+        proc = run(cmd + (["--as-of", as_of] if as_of else []), cwd=SKILL_ROOT)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        results[as_of] = (len(json.loads(out.read_text(encoding="utf-8"))), proc.stdout)
+    assert results["2026-09-07"][0] == 5
+    assert "1 already seen, 0 outside" in results["2026-09-07"][1]
+    assert results[None][0] == 0
+    assert "1 already seen, 5 outside" in results[None][1]
+    bad = run(
+        ["scripts/state.py", "dedupe", "--as-of", "07/09/2026", "--events", "x"]
+        + ["--state", "y", "--out", str(tmp_path / "z.json")],
+        cwd=SKILL_ROOT,
+    )
+    assert bad.returncode == 2 and "YYYY-MM-DD" in bad.stderr
+
+
 def test_state_record_is_atomic_write(tmp_path):
     """`write_state_atomic` writes via a temp file plus rename, per its own
     docstring, so the state file is never left half-written. Sanity check:
@@ -273,3 +392,25 @@ def test_shipped_sample_carries_source_provenance():
     )
     assert 'class="srcline"' in sample
     assert "Source:" in sample
+
+
+def test_card_is_self_contained_and_fluid():
+    """The card opens offline and makes no network request (the template used to
+    load Google Fonts), and its sheet shrinks below 1280px instead of clipping the
+    left edge (2026-11-06 plugin rerun). Source links are plain anchors, which are
+    fetched only when clicked."""
+    sample = MODULE_ROOT / "samples" / "01_Overnight_Card_SAMPLE.html"
+    for doc in (TEMPLATE, sample):
+        text = doc.read_text(encoding="utf-8")
+        for loader in (
+            r"<link\b",
+            r"<script[^>]*\bsrc=",
+            r"<img\b",
+            r"<iframe\b",
+            r"@import",
+            r"url\(",
+        ):
+            assert not re.search(loader, text, re.IGNORECASE), (doc.name, loader)
+        assert not re.search(r"[{;]width:1280px", text), "fixed-width sheet"
+        assert "max-width:1280px" in text
+        assert "@media (max-width:820px)" in text

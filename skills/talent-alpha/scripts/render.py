@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 """Talent Alpha deterministic pipeline: trust-boundary join, reconcile, render, verify.
 
-No agent output reaches the final card without passing through this script.
-Agents (scanner, advocate, skeptic) emit structured JSON only; this script
-does every formatting and every trust decision. That split is the point: an
-agent that invents a plausible-looking id, or grades its own candidate as a
-stronger fit than it is, cannot make that call stick, because this script
-never trusts an agent's own claim of a company/location/id when the trusted
-event batch says otherwise.
+Agents emit structured JSON. The production build command requires both judges,
+checks the card against its sources and schema, renders and verifies it, and records
+state last. These structural checks do not prove a source story or an inferred fit true.
 
 Subcommands
 -----------
+build       reconcile + accuracy/schema checks + render + verify + record state
 join        raw new-events + scanner shortlist -> trusted_candidates.json
             (drops any id the scanner invented; never in the raw batch)
 reconcile   trusted_candidates + advocate verdicts + skeptic verdicts
@@ -37,10 +34,22 @@ import datetime
 import html
 import json
 import math
+import os
 import re
 import sys
+import tempfile
+from pathlib import Path
+from urllib.parse import urlsplit
 
 import runlog
+from state import (
+    MAX_AGE_DAYS,
+    WINDOW_DAYS,
+    age_in_days,
+    parse_as_of,
+    parse_timestamp,
+    utc_today,
+)
 
 log = runlog.get_logger("talent-alpha.render")
 
@@ -53,38 +62,39 @@ TIER_COLOR = {
     "HELD": "rgba(20,23,28,.45)",
 }
 AXES = ["openness", "role_fit", "product_fit", "region_fit", "size_fit", "stage_fit"]
+# An axis name in card prose ("stage_fit H is inferred from ...") means a judge explained
+# a score on the card instead of keeping it in the diagram. The template itself has none.
+AXIS_TOKEN_RE = re.compile(r"\b[A-Za-z]+_fit\b")
 
 BANNED_FILLER = ["TBD", "N/A", "Data not available", "NOT_FOUND"]
 
-REQUIRED_RUN_KEYS = [
+TEMPLATE_SLOTS = (
     "author",
-    "run_date",
-    "company_name",
-    "role_title",
-    "role_location",
-    "scanned_count",
-    "window_note",
-]
-REQUIRED_CANDIDATE_KEYS = [
-    "id",
-    "company",
-    "location",
-    "employees_affected",
-    "event_type",
-    "event_age_label",
-    "age_days",
-    "titles",
-    "tier",
-    "bands",
-    "wildcard",
-    "why",
-    "hook",
-    "edge",
-    "held",
-    "hold_reason",
-    "source_name",
-    "source_url",
-]
+    "run-date",
+    "role-name",
+    "role-meta",
+    "tier-counts",
+    "run-id",
+    "hero-tag",
+    "hero-company",
+    "hero-loc",
+    "hero-titles",
+    "hero-why",
+    "hero-edge",
+    "hero-hook",
+    "hero-source",
+    "c-summary",
+    "foot-left",
+    "foot-right",
+)
+HERO_TAG_ANCHOR = '<span class="chipS" data-slot="hero-tag">-</span>'
+HERO_GRAPH_ANCHOR = 'data-bands="M,M,M,M,M,M" data-tier="S" data-size="150"'
+CARD_ANCHOR = "<!-- CARD:START -->\n<!-- CARD:END -->"
+
+CONTENT_SCHEMA = (
+    Path(__file__).resolve().parent.parent
+    / "references/content-schemas/card.content-schema.json"
+)
 
 
 # ---------------------------------------------------------------- utilities
@@ -121,30 +131,83 @@ def js_round(x):
     return math.floor(x + 0.5)
 
 
-def age_days_of(published_at):
-    if not published_at:
-        return 999
-    try:
-        dt = datetime.datetime.fromisoformat(published_at.replace("Z", "+00:00"))
-    except ValueError:
-        return 999
-    now = datetime.datetime.now(datetime.timezone.utc)
-    delta = (now - dt).total_seconds() / 86400.0
-    return max(0, math.floor(delta))
+def age_days_of(published_at, as_of):
+    """Whole days from the event's UTC date to the run date (state.age_in_days)."""
+    days = age_in_days(published_at, as_of) if published_at else None
+    return 999 if days is None else max(0, days)
 
 
-def age_label_of(days):
+def age_label_of(days, event_type=""):
+    """The badge text. An event older than its source window says so: the card's
+    count bar names the window, and a badge must not read as fresher than it is."""
     if days <= 0:
-        return "today"
-    if days == 1:
-        return "1d ago"
-    return f"{days}d ago"
+        label = "today"
+    elif days == 1:
+        label = "1d ago"
+    else:
+        label = f"{days}d ago"
+    window = WINDOW_DAYS.get(event_type)
+    if window is not None and days > window:
+        label += f", outside the {window}d window"
+    return label
+
+
+def window_note_of(as_of):
+    return (
+        f"WARN: {WINDOW_DAYS['layoff']}d; funding news: "
+        f"{WINDOW_DAYS['funding_distress']}d; ages as of {as_of.isoformat()}"
+    )
+
+
+def run_reference_time(as_of):
+    """The moment a run date stands for: now, unless the run date is in the past
+    (a frozen fixture run), then the end of that day."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    end_of_day = datetime.datetime.combine(
+        as_of + datetime.timedelta(days=1), datetime.time(), datetime.timezone.utc
+    )
+    return min(now, end_of_day)
 
 
 # --------------------------------------------------------------- join (trust boundary)
 
 
-def event_problems(e):
+def grounded_extraction(event, value):
+    """A scanner extraction must occur in the source's title or snippet."""
+    if not isinstance(value, str) or not value.strip():
+        return ""
+    tokens = re.findall(r"\w+", value.casefold())
+    evidence = " ".join(str(event.get(k, "")) for k in ("title", "snippet"))
+    words = " " + " ".join(re.findall(r"\w+", evidence.casefold())) + " "
+    return value.strip() if tokens and " " + " ".join(tokens) + " " in words else ""
+
+
+def resolved_company(event, extracted):
+    if event.get("company"):
+        return event["company"]
+    if event.get("event_type") == "funding_distress":
+        return grounded_extraction(event, extracted)
+    return ""
+
+
+def index_unique(rows, key, label):
+    if not isinstance(rows, list):
+        raise TypeError(f"{label} must be an array")
+    result = {}
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or not isinstance(row.get(key), str)
+            or not row[key]
+        ):
+            raise ValueError(f"{label}: every item needs a nonempty {key}")
+        if row[key] in result:
+            raise ValueError(f"{label}: duplicate {key} {row[key]!r}")
+        result[row[key]] = row
+    return result
+
+
+def event_problems(e, as_of=None):
     """Why this raw event is not fit to score. Empty list means it is.
 
     The join is the trust boundary, but it used to inspect only the agent:
@@ -159,31 +222,44 @@ def event_problems(e):
 
     if not (e.get("company") or "").strip():
         problems.append("no company name")
+    if e.get("event_type") not in tuple(WINDOW_DAYS):
+        problems.append("invalid event_type")
+    if not (e.get("source_name") or "").strip():
+        problems.append("no source_name")
 
     if not (e.get("source_url") or "").strip():
         problems.append("no source_url, so no reader can check the claim")
+    else:
+        try:
+            url = urlsplit(e["source_url"])
+            if url.scheme.lower() not in ("http", "https") or not url.hostname:
+                problems.append("source_url must be an absolute http(s) URL")
+        except ValueError:
+            problems.append("invalid source_url")
 
     published = e.get("published_at")
     if not published:
         problems.append("no published_at")
     else:
         try:
-            dt = datetime.datetime.fromisoformat(published.replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
+            dt = parse_timestamp(published)
+        except (ValueError, TypeError):
             problems.append(f"unparseable published_at {published!r}")
         else:
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=datetime.timezone.utc)
             # A future date is not just wrong, it scores BEST: age_days_of
-            # clamps negatives to 0, which labels it "today".
-            ahead = (dt - datetime.datetime.now(datetime.timezone.utc)).total_seconds()
+            # clamps negatives to 0, which labels it "today". Future means after
+            # the run date (now, for a run dated today), with a day of slack.
+            reference = run_reference_time(as_of or utc_today())
+            ahead = (dt - reference).total_seconds()
             if ahead > 86400:
-                problems.append(f"published_at is in the future ({published})")
+                problems.append(
+                    f"published_at is in the future of the run date ({published})"
+                )
 
     affected = e.get("employees_affected")
     if affected is not None:
-        if not isinstance(affected, (int, float)) or isinstance(affected, bool):
-            problems.append(f"employees_affected is not a number ({affected!r})")
+        if not isinstance(affected, int) or isinstance(affected, bool):
+            problems.append(f"employees_affected is not an integer ({affected!r})")
         elif affected < 0:
             problems.append(f"negative employees_affected ({affected})")
 
@@ -192,50 +268,52 @@ def event_problems(e):
 
 def cmd_join(args):
     raw_events = load(args.raw)
-    by_id = {e["event_id"]: e for e in raw_events}
+    by_id = index_unique(raw_events, "event_id", "raw events")
     shortlist = load(args.shortlist)
     opportunities = shortlist.get("opportunities", [])
+    index_unique(opportunities, "id", "shortlist")
 
-    # Reject unusable events before any shortlist entry can reference one.
     rejected = {}
-    for eid, e in list(by_id.items()):
-        problems = event_problems(e)
-        if problems:
-            rejected[eid] = problems
-            del by_id[eid]
 
     trusted = []
     dropped = []
-    unusable = []
     for o in opportunities:
         oid = o.get("id")
-        if oid in rejected:
-            unusable.append(oid)
-            continue
         base = by_id.get(oid)
         if base is None:
             dropped.append(oid)
             continue
+        # Validate the resolved company, not the intentionally empty funding field.
+        event = dict(base, company=resolved_company(base, o.get("company")))
+        problems = event_problems(event, args.as_of)
+        if problems:
+            rejected[oid] = problems
+            continue
         trusted.append(
             {
                 "id": o["id"],
-                "company": base.get("company") or o.get("company", ""),
+                "company": event["company"],
                 "event_type": base.get("event_type") or o.get("event_type", ""),
-                "functions": o.get("functions", []),
-                "location": base.get("location") or o.get("location", ""),
+                # The scanner inferred these; no source names them. The key says so,
+                # so a judge cannot read them as a fact from the filing.
+                "inferred_functions": o.get("functions", []),
+                "location": base.get("location")
+                or grounded_extraction(base, o.get("location")),
                 "employees_affected": base.get("employees_affected"),
                 "published_at": base.get("published_at"),
                 "score": o.get("score"),
                 "why": o.get("why", ""),
                 "source_name": base.get("source_name", ""),
                 "source_url": base.get("source_url", ""),
+                "title": base.get("title", ""),
+                "snippet": base.get("snippet", ""),
             }
         )
 
     dump(args.out, trusted)
     msg = (
         f"join: {len(opportunities)} shortlisted, {len(dropped)} dropped (id not in trusted batch), "
-        f"{len(unusable)} dropped (event failed batch checks), {len(trusted)} trusted -> {args.out}"
+        f"{len(rejected)} dropped (event failed batch checks), {len(trusted)} trusted -> {args.out}"
     )
     if dropped:
         msg += f"\n  invented ids: {dropped}"
@@ -246,7 +324,7 @@ def cmd_join(args):
         "join: %d shortlisted, %d trusted, %d dropped",
         len(opportunities),
         len(trusted),
-        len(dropped) + len(unusable),
+        len(dropped) + len(rejected),
     )
     if opportunities and not trusted:
         # A quiet night is an empty SHORTLIST, and 2.2 already stops there. A
@@ -265,20 +343,44 @@ def cmd_join(args):
 
 def cmd_reconcile(args):
     trusted = load(args.trusted)
-    trusted_by_id = {t["id"]: t for t in trusted}
+    trusted_by_id = index_unique(trusted, "id", "trusted candidates")
     advocate = load(args.advocate).get("verdicts", [])
     skeptic = load(args.skeptic).get("verdicts", [])
-    skeptic_by_id = {v["id"]: v for v in skeptic}
+    advocate_by_id = index_unique(advocate, "id", "advocate verdicts")
+    skeptic_by_id = index_unique(skeptic, "id", "skeptic verdicts")
+    if args.min_shown < 0 or args.max_shown < 1:
+        raise ValueError("min-shown must be nonnegative and max-shown must be positive")
+    properties = load(CONTENT_SCHEMA)["properties"]["candidates"]["items"]["properties"]
+    for name, verdicts in (("advocate", advocate_by_id), ("skeptic", skeptic_by_id)):
+        missing = sorted(set(trusted_by_id) - set(verdicts))
+        extra = sorted(set(verdicts) - set(trusted_by_id))
+        if missing or extra:
+            raise ValueError(
+                f"{name} coverage mismatch: missing {missing}, unknown {extra}"
+            )
+        for verdict in verdicts.values():
+            if verdict.get("tier") not in TIER_RANK:
+                raise ValueError(f"{name}: invalid tier for {verdict['id']!r}")
+            if any(verdict.get(axis) not in ("H", "M", "L") for axis in AXES):
+                raise ValueError(
+                    f"{name}: invalid or missing fit axis for {verdict['id']!r}"
+                )
+            for key in ("why", "hook", "edge", "titles", "wildcard"):
+                if key not in verdict:
+                    raise ValueError(f"{name}: missing {key} for {verdict['id']!r}")
+                issues = schema_problems(verdict[key], properties[key], f"{name}.{key}")
+                if issues:
+                    raise ValueError("; ".join(issues))
 
+    as_of = args.as_of or utc_today()
     finals = []
     for a in advocate:
-        t = trusted_by_id.get(a.get("id"))
-        if t is None:
-            continue  # advocate invented or mis-copied an id; drop, same as join
-        age_days = age_days_of(t.get("published_at"))
-        s = skeptic_by_id.get(a["id"])
+        # Coverage and field checks above already raised on any unknown id or missing key.
+        t = trusted_by_id[a["id"]]
+        age_days = age_days_of(t.get("published_at"), as_of)
+        s = skeptic_by_id[a["id"]]
         rank_a = TIER_RANK[a["tier"]]
-        rank_s = TIER_RANK[s["tier"]] if s else rank_a
+        rank_s = TIER_RANK[s["tier"]]
         blended = js_round((rank_a + rank_s) / 2)
         finals.append(
             {
@@ -287,19 +389,17 @@ def cmd_reconcile(args):
                 "location": t["location"],
                 "employees_affected": t.get("employees_affected"),
                 "event_type": t["event_type"],
-                "event_age_label": age_label_of(age_days),
+                "event_age_label": age_label_of(age_days, t["event_type"]),
                 "age_days": age_days,
-                "titles": a.get("titles", []),
+                "titles": a["titles"],
                 "tier": TIER_BY_RANK[blended],
                 "_rank": blended,
                 "_disagree": abs(rank_a - rank_s) >= 3,
-                "bands": [a.get(axis, "M") for axis in AXES],
-                "wildcard": a.get(
-                    "wildcard", {"fired": False, "axis_index": -1, "bridge": ""}
-                ),
-                "why": a.get("why", ""),
-                "hook": a.get("hook", ""),
-                "edge": a.get("edge", ""),
+                "bands": [a[axis] for axis in AXES],
+                "wildcard": a["wildcard"],
+                "why": a["why"],
+                "hook": a["hook"],
+                "edge": a["edge"],
                 "held": False,
                 "hold_reason": "",
                 "source_name": t.get("source_name", ""),
@@ -314,7 +414,7 @@ def cmd_reconcile(args):
             f["held"] = True
             f["tier"] = "HELD"
             f["hold_reason"] = f"beyond the top {args.max_shown} this run"
-        elif f["_disagree"] and idx >= args.min_shown:
+        elif f["_disagree"]:
             f["held"] = True
             f["tier"] = "HELD"
             f["hold_reason"] = "judges disagreed sharply"
@@ -331,7 +431,7 @@ def cmd_reconcile(args):
             "role_title": args.role_title,
             "role_location": args.role_location,
             "scanned_count": len(finals),
-            "window_note": "72h window",
+            "window_note": window_note_of(as_of),
         },
         "candidates": finals,
     }
@@ -345,6 +445,48 @@ def cmd_reconcile(args):
 
 
 # --------------------------------------------------------------- render
+
+
+def validate_template(doc):
+    """Reject incomplete templates before a card can replace output or retire events."""
+    slots = re.findall(r'data-slot="([a-zA-Z0-9_-]+)"', doc)
+    invalid = [name for name in TEMPLATE_SLOTS if slots.count(name) != 1]
+    anchors = (
+        HERO_TAG_ANCHOR,
+        HERO_GRAPH_ANCHOR,
+        CARD_ANCHOR,
+        "<!-- HERO:START -->",
+        "<!-- HERO:END -->",
+    )
+    if invalid or any(doc.count(anchor) != 1 for anchor in anchors):
+        raise ValueError(
+            "invalid card template: preserve one of each required data-slot, "
+            "hero anchor and card block"
+            + (f"; invalid slots: {invalid}" if invalid else "")
+        )
+    spans = []
+    for name in TEMPLATE_SLOTS:
+        match = re.search(
+            r'<[a-zA-Z0-9]+[^>]*data-slot="' + re.escape(name) + r'"[^>]*>', doc
+        )
+        if match is None:
+            raise ValueError(f"invalid card template: slot {name} has no element")
+        try:
+            start, end = element_span(doc, match.start())
+        except ValueError as exc:
+            raise ValueError(f"invalid card template: {exc}") from exc
+        spans.append((match.start(), start, end, name))
+    for opening, start, end, name in spans:
+        if any(start <= other < end for other, _, _, _ in spans):
+            raise ValueError(f"invalid card template: nested slot inside {name}")
+        if any(start <= doc.index(anchor) < end for anchor in anchors):
+            raise ValueError(f"invalid card template: render anchor inside {name}")
+    if (
+        not doc.index("<!-- HERO:START -->")
+        < doc.index("<!-- HERO:END -->")
+        < doc.index(CARD_ANCHOR)
+    ):
+        raise ValueError("invalid card template: hero and card blocks are out of order")
 
 
 def element_span(doc, open_start):
@@ -366,7 +508,7 @@ def fill_slot(doc, slot, content):
     )
     m = pattern.search(doc)
     if not m:
-        return doc
+        raise ValueError(f"invalid card template: missing slot {slot}")
     a, b = element_span(doc, m.start())
     return doc[:a] + content + doc[b:]
 
@@ -423,24 +565,99 @@ def render_card(it):
     )
 
 
-def validate_content(content, strict):
+def schema_problems(value, schema, path="card"):
+    """Check the schema vocabulary used by this card, without runtime dependencies.
+
+    New constraints must be implemented here before they can be used in the schema;
+    unsupported keywords fail instead of silently skipping validation.
+    """
+    supported = {
+        "$schema",
+        "title",
+        "description",
+        "type",
+        "required",
+        "properties",
+        "additionalProperties",
+        "items",
+        "minItems",
+        "maxItems",
+        "minimum",
+        "maximum",
+        "enum",
+    }
+    unknown = set(schema) - supported
+    if unknown:
+        raise ValueError(f"unsupported schema keywords at {path}: {sorted(unknown)}")
+    types = {
+        "object": isinstance(value, dict),
+        "array": isinstance(value, list),
+        "string": isinstance(value, str),
+        "integer": type(value) is int,
+        "boolean": type(value) is bool,
+        "null": value is None,
+    }
+    expected = schema.get("type", [])
+    expected = [expected] if isinstance(expected, str) else expected
+    if any(t not in types for t in expected):
+        raise ValueError(f"unsupported schema type at {path}: {expected}")
+    if expected and not any(types[t] for t in expected):
+        return [f"{path}: expected {' or '.join(expected)}"]
     problems = []
-    run = content.get("run", {})
-    for key in REQUIRED_RUN_KEYS:
-        if key not in run:
-            problems.append(f"run.{key} missing")
-    for i, c in enumerate(content.get("candidates", [])):
-        for key in REQUIRED_CANDIDATE_KEYS:
-            if key not in c:
+    if "enum" in schema and value not in schema["enum"]:
+        problems.append(f"{path}: invalid value {value!r}")
+    if isinstance(value, dict):
+        properties = schema.get("properties", {})
+        problems.extend(
+            f"{path}.{k} missing" for k in schema.get("required", []) if k not in value
+        )
+        if schema.get("additionalProperties") is False:
+            problems.extend(
+                f"{path}.{k}: unexpected field" for k in value if k not in properties
+            )
+        for key, child in properties.items():
+            if key in value:
+                problems.extend(schema_problems(value[key], child, f"{path}.{key}"))
+    if isinstance(value, list):
+        for key, fails in (
+            ("minItems", len(value) < schema.get("minItems", 0)),
+            ("maxItems", len(value) > schema.get("maxItems", len(value))),
+        ):
+            if fails:
+                problems.append(f"{path}: violates {key}={schema[key]}")
+        if "items" in schema:
+            for i, item in enumerate(value):
+                problems.extend(schema_problems(item, schema["items"], f"{path}[{i}]"))
+    if type(value) is int:
+        for key, fails in (
+            ("minimum", value < schema.get("minimum", value)),
+            ("maximum", value > schema.get("maximum", value)),
+        ):
+            if fails:
+                problems.append(f"{path}: violates {key}={schema[key]}")
+    return problems
+
+
+def validate_content(content, strict):
+    problems = schema_problems(content, load(CONTENT_SCHEMA))
+    if not problems:
+        seen = set()
+        for c in content["candidates"]:
+            if c["id"] in seen:
+                problems.append(f"duplicate candidate id {c['id']!r}")
+            seen.add(c["id"])
+            for key in ("id", "company", "source_name", "source_url", "why"):
+                if not c[key].strip():
+                    problems.append(f"candidate {c['id']!r}: {key} is empty")
+            if c["held"] != (c["tier"] == "HELD") or c["held"] != bool(
+                c["hold_reason"].strip()
+            ):
+                problems.append(f"candidate {c['id']!r}: inconsistent held/tier/reason")
+            wc = c["wildcard"]
+            if wc["fired"] and (wc["axis_index"] < 0 or not wc["bridge"].strip()):
                 problems.append(
-                    f"candidates[{i}].{key} missing (id={c.get('id', '?')})"
+                    f"candidate {c['id']!r}: wildcard needs an axis and bridge"
                 )
-        if "wildcard" in c:
-            for key in ("fired", "axis_index", "bridge"):
-                if key not in c["wildcard"]:
-                    problems.append(
-                        f"candidates[{i}].wildcard.{key} missing (id={c.get('id', '?')})"
-                    )
     if problems and strict:
         print(
             "STRICT RENDER FAILED. Nothing written. Route this back to the producing "
@@ -461,6 +678,7 @@ def cmd_render(args):
 
     with open(args.template, "r", encoding="utf-8") as f:
         doc = f.read()
+    validate_template(doc)
 
     run = content["run"]
     doc = fill_slot(doc, "author", esc(run["author"]))
@@ -490,7 +708,7 @@ def cmd_render(args):
     doc = fill_slot(
         doc,
         "run-id",
-        f"{len(shown) + len(held)} signals scanned · {esc(run['window_note'])}",
+        f"{len(all_candidates)} signals scanned · {esc(run['window_note'])}",
     )
 
     held_summary = (
@@ -518,14 +736,6 @@ def cmd_render(args):
         doc = re.sub(
             r"<!-- HERO:START -->.*?<!-- HERO:END -->", "", doc, flags=re.DOTALL
         )
-        doc = fill_slot(
-            doc,
-            "foot-left",
-            "Talent Alpha · overnight brief · WARN + funding-distress categories",
-        )
-        doc = fill_slot(
-            doc, "foot-right", "Sources travel untrusted · nothing sends automatically"
-        )
     else:
         hero, rest = shown[0], shown[1:]
         chip_color = TIER_COLOR.get(hero["tier"], TIER_COLOR["HELD"])
@@ -536,9 +746,7 @@ def cmd_render(args):
             hero_chip = f'<span class="chipS">{tag_text}</span>'
         else:
             hero_chip = f'<span class="chipS" style="background:none;border:1px solid {chip_color};color:{chip_color}">{tag_text}</span>'
-        doc = doc.replace(
-            '<span class="chipS" data-slot="hero-tag">-</span>', hero_chip
-        )
+        doc = doc.replace(HERO_TAG_ANCHOR, hero_chip)
         doc = fill_slot(doc, "hero-company", esc(hero["company"]))
         doc = fill_slot(doc, "hero-loc", esc(loc_line(hero)))
         doc = fill_slot(
@@ -557,23 +765,23 @@ def cmd_render(args):
         wc = hero.get("wildcard") or {}
         wc_attr = f' data-wc="{esc_attr(wc["axis_index"])}"' if wc.get("fired") else ""
         doc = doc.replace(
-            'data-bands="M,M,M,M,M,M" data-tier="S" data-size="150"',
+            HERO_GRAPH_ANCHOR,
             f'data-bands="{esc_attr(",".join(hero["bands"]))}" data-tier="{esc_attr(hero["tier"])}" data-size="150"{wc_attr}',
         )
         cards_html = "".join(render_card(it) for it in rest)
         doc = doc.replace(
-            "<!-- CARD:START -->\n<!-- CARD:END -->",
+            CARD_ANCHOR,
             "<!-- CARD:START -->" + cards_html + "<!-- CARD:END -->",
         )
         doc = fill_slot(doc, "c-summary", esc(held_summary))
-        doc = fill_slot(
-            doc,
-            "foot-left",
-            "Talent Alpha · overnight brief · WARN + funding-distress categories",
-        )
-        doc = fill_slot(
-            doc, "foot-right", "Sources travel untrusted · nothing sends automatically"
-        )
+    doc = fill_slot(
+        doc,
+        "foot-left",
+        "Talent Alpha · overnight brief · WARN + funding-distress categories",
+    )
+    doc = fill_slot(
+        doc, "foot-right", "Sources travel untrusted · nothing sends automatically"
+    )
 
     with open(args.out, "w", encoding="utf-8") as f:
         f.write(doc)
@@ -607,6 +815,12 @@ def cmd_verify(args):
             findings.append(f'banned filler string present: "{phrase}"')
     if "—" in doc:
         findings.append("em dash (—) present")
+    axis_tokens = sorted(set(AXIS_TOKEN_RE.findall(doc)))
+    if axis_tokens:
+        findings.append(
+            f"fit-axis name in card text: {axis_tokens}; remove the ungrounded claim "
+            "from why/hook/edge, do not substitute an inference"
+        )
     unfilled = re.findall(r'data-slot="([a-zA-Z0-9_-]+)">-<', doc)
     if unfilled:
         findings.append(
@@ -625,6 +839,154 @@ def cmd_verify(args):
 # --------------------------------------------------------------- main
 
 
+def cmd_build(args):
+    """Publish a checked local card, then record state. Failures leave state untouched."""
+    import state
+    import validate_card
+
+    content_path, html_path = Path(args.out), Path(args.html)
+    input_paths = [
+        args.raw,
+        args.trusted,
+        args.advocate,
+        args.skeptic,
+        args.profile,
+        args.state,
+        args.template,
+    ]
+    outputs = [content_path.resolve(), html_path.resolve()]
+    if outputs[0] == outputs[1] or any(
+        Path(p).resolve() in outputs for p in input_paths
+    ):
+        raise ValueError(
+            "card outputs must be separate from each other and from input/state files"
+        )
+    raw = index_unique(load(args.raw), "event_id", "raw events")
+    for candidate in load(args.trusted):
+        event = raw.get(candidate.get("id"))
+        if event is None:
+            raise ValueError(
+                f"trusted id {candidate.get('id')!r} is absent from the pull"
+            )
+        if candidate.get("published_at") != event.get("published_at"):
+            raise ValueError(
+                f"published_at differs from the pull for {candidate['id']!r}"
+            )
+        issues = event_problems(
+            dict(event, company=resolved_company(event, candidate.get("company"))),
+            args.as_of,
+        )
+        if issues:
+            raise ValueError(
+                f"unusable source event {candidate['id']!r}: " + "; ".join(issues)
+            )
+    profile = Path(args.profile).read_text(encoding="utf-8")
+    leverage = validate_card.leverage_from_profile(profile)
+    company_facts = validate_card.company_facts_from_profile(profile)
+    seen = state.load_state(args.state)["seen_events"]
+    if any(not text.strip() for text in (args.company_name, args.role_title)):
+        raise ValueError(
+            "company-name and role-title are required for a role-specific card"
+        )
+    # Stage both files away from the final paths: a validation failure cannot replace
+    # a previous good card, and a failed render cannot mark anything seen.
+    with tempfile.TemporaryDirectory(
+        prefix=".talent-alpha-build-", dir=content_path.parent
+    ) as temp:
+        staged_content, staged_html = (
+            Path(temp) / "content.json",
+            Path(temp) / "card.html",
+        )
+        reconcile_args = argparse.Namespace(**vars(args))
+        reconcile_args.out = str(staged_content)
+        cmd_reconcile(reconcile_args)
+        content = load(staged_content)
+        findings, warnings, _ = validate_card.check_card(
+            content,
+            load(args.advocate),
+            load(args.skeptic),
+            raw,
+            leverage,
+            args.max_shown,
+            seen,
+            company_facts,
+        )
+        for warning in warnings:
+            print(f"build warning: {warning}", file=sys.stderr)
+        if findings:
+            raise ValueError("card accuracy checks failed: " + "; ".join(findings))
+        cmd_render(
+            argparse.Namespace(
+                content=str(staged_content),
+                template=args.template,
+                out=str(staged_html),
+                strict=True,
+            )
+        )
+        cmd_verify(argparse.Namespace(doc=str(staged_html)))
+        os.replace(staged_content, content_path)
+        os.replace(staged_html, html_path)
+    state.cmd_record(
+        argparse.Namespace(
+            candidates=str(content_path), state=args.state, max_age_days=MAX_AGE_DAYS
+        )
+    )
+    print(f"build OK: {html_path}; state recorded after validation and verification")
+
+
+def config_problems(path):
+    config = path if isinstance(path, dict) else load(path)
+    issues = schema_problems(
+        config, load(CONTENT_SCHEMA.with_name("n8n-config.schema.json")), "config"
+    )
+    # Name every blank field at once, even beside a schema problem, so a user fixes
+    # the export in one pass instead of one field per attempt.
+    config = config if isinstance(config, dict) else {}
+    role = config.get("openRole") if isinstance(config.get("openRole"), dict) else {}
+    for key, value in (
+        ("targetSectors", config.get("targetSectors")),
+        ("openRole.id", role.get("id")),
+        ("openRole.title", role.get("title")),
+    ):
+        if isinstance(value, str) and not value.strip():
+            issues.append(f"{key} cannot be empty")
+    functions = role.get("functions")
+    if isinstance(functions, list) and any(
+        isinstance(f, str) and not f.strip() for f in functions
+    ):
+        issues.append("openRole.functions cannot contain empty strings")
+    criteria = config.get("sourcingCriteria", {})
+    if isinstance(criteria, dict):
+        for key in (
+            "skills",
+            "eligibleLocations",
+            "priorityTriggers",
+            "excludeCompanies",
+        ):
+            values = criteria.get(key, [])
+            if isinstance(values, list) and any(
+                isinstance(v, str) and not v.strip() for v in values
+            ):
+                issues.append(f"sourcingCriteria.{key} cannot contain empty strings")
+        if config.get("includeFundingDistress") is False and criteria.get(
+            "eventTypes"
+        ) == ["funding_distress"]:
+            issues.append("no enabled event types")
+    return issues
+
+
+def cmd_check_config(args):
+    """A setup error is an answer for the user, not a crash: one line, exit 1."""
+    try:
+        issues = config_problems(args.config)
+    except (OSError, ValueError) as exc:  # unreadable file or not JSON
+        issues = [f"cannot read {args.config}: {exc}"]
+    if issues:
+        print("check-config: invalid n8n Config: " + "; ".join(issues), file=sys.stderr)
+        sys.exit(1)
+    print(f"config OK: {args.config}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -638,6 +1000,12 @@ def main(argv=None):
     j.add_argument("--raw", required=True)
     j.add_argument("--shortlist", required=True)
     j.add_argument("--out", required=True)
+    j.add_argument(
+        "--as-of",
+        type=parse_as_of,
+        default=None,
+        help="Run date (YYYY-MM-DD) that event ages count to; default today (UTC).",
+    )
     j.set_defaults(func=cmd_join)
 
     r = sub.add_parser(
@@ -651,7 +1019,10 @@ def main(argv=None):
     r.add_argument("--role-title", required=True)
     r.add_argument("--role-location", required=True)
     r.add_argument(
-        "--min-shown", type=int, default=4, help="Top N always shown (default 4)."
+        "--min-shown",
+        type=int,
+        default=4,
+        help="Accepted for existing callers; must be nonnegative, otherwise ignored.",
     )
     r.add_argument(
         "--max-shown",
@@ -660,7 +1031,39 @@ def main(argv=None):
         help="Hard cap on shown candidates (default 10).",
     )
     r.add_argument("--out", required=True)
+    r.add_argument(
+        "--as-of",
+        type=parse_as_of,
+        default=None,
+        help="Run date (YYYY-MM-DD) that event ages count to; default today (UTC).",
+    )
     r.set_defaults(func=cmd_reconcile)
+
+    b = sub.add_parser(
+        "build",
+        parents=[r],
+        add_help=False,
+        help="Reconcile, validate, render, verify, then record state.",
+    )
+    b.add_argument("--raw", required=True, help="This run's deduped new_events.json.")
+    b.add_argument(
+        "--profile", required=True, help="The saved onepromptman-profile.md."
+    )
+    b.add_argument("--state", required=True)
+    b.add_argument("--html", required=True, help="Final HTML card path.")
+    b.add_argument(
+        "--template",
+        default=str(
+            CONTENT_SCHEMA.parent.parent / "templates/overnight_card.template.html"
+        ),
+    )
+    b.set_defaults(func=cmd_build)
+
+    config = sub.add_parser(
+        "check-config", help="Validate the setup-generated n8n Config JSON."
+    )
+    config.add_argument("--config", required=True)
+    config.set_defaults(func=cmd_check_config)
 
     d = sub.add_parser("render", help="Fill the template from content JSON.")
     d.add_argument("--template", required=True)

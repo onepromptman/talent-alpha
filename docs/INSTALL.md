@@ -6,7 +6,8 @@ conversation. Want the standalone, scheduled n8n workflow instead (or as
 well)? See [`setup.md`](setup.md) in this same folder -- that page is n8n
 only and does not cover plugin install.
 
-Talent Alpha runs in **Claude Code** and **Cowork**. It does not run in the
+The plugin targets **Claude Code** and **Cowork**. Complete the separate
+[account acceptance cases](ACCEPTANCE.md) in each client before relying on it. It does not run in the
 regular Claude chat window, which cannot spawn the scanner and judge
 subagents; `run talent alpha` will do nothing there.
 
@@ -34,8 +35,21 @@ Code or Cowork.
 
 ## Cowork (Claude desktop app)
 
-Open the plugin browser and add the marketplace, then install **Talent
-Alpha** the same way as Option A above.
+Open **Cowork**, then **Customize > Plugins**. Upload the provided
+`talent-alpha.zip` using the custom-plugin upload option. Open a new Cowork task
+and select a writable working folder for the profile, memory and cards. Enable
+web search and say `set up talent alpha`. The setup checks capabilities before
+claiming it can scan. Python 3.10+ must be available inside Cowork's execution
+environment, which may differ from the host computer's PATH.
+
+For repository installation after publication, add the
+`onepromptman/talent-alpha` marketplace in the plugin browser and install Talent
+Alpha. A locally prepared ZIP contains the candidate build; GitHub still serves
+the previously published version until the owner updates it.
+
+See Anthropic's [plugin installation guide](https://support.claude.com/en/articles/13837440-use-plugins-in-claude).
+Plugin skills may appear in ordinary chat, but this product's full run requires
+the subagents and execution tools available in Cowork or Claude Code.
 
 ## First run
 
@@ -62,6 +76,13 @@ Setup also writes `talent-alpha-n8n-config.json`, a ready-to-paste `Config`
 node value for the n8n path -- useful only if you later run the workflow in
 [`setup.md`](setup.md) too; ignore it otherwise.
 
+Setup first explains which news can justify action today, then asks which roles
+and locations you want to target. It proposes role-specific triggers and asks
+you to confirm them. Saved roles live in `talent-alpha-targets.json`; each also
+gets `talent-alpha-n8n-config-<id>.json`. Say `run talent alpha for <role>` or
+`run all my targets` for separate cards and separate seen-event memory. Daily
+runs reuse your plan; update setup when the role or hiring terms change.
+
 Then, once setup is done:
 
 ```
@@ -78,7 +99,7 @@ what they trade off:
   source at Reported tier instead of Filed (see
   [`../CONNECTORS.md`](../CONNECTORS.md) for why). Scheduling on the Claude
   Code / Cowork side is unconfirmed for this build.
-- **n8n (`setup.md`):** a real unattended nightly run, needs its own
+- **n8n (`setup.md`):** a scheduling preview to validate before unattended use, needs its own
   credentials (Anthropic, optionally WARN Firehose and Perplexity, Gmail),
   and gets Filed-tier WARN data when the WARN Firehose key is attached.
 

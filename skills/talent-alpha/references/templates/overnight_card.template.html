@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8">
 <title>Overnight Talent Signals</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
+/* Self-contained: no web fonts or other network requests. The brand faces are used
+   when installed locally; otherwise each stack falls back to a system font. */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--paper:#F7F7F4;--ink:#14171C;--muted:rgba(20,23,28,.55);--soft:rgba(20,23,28,.14);
 --red:#C8202E;--green:#1B3A2C;--gold:#C7A24A;--gold-dk:#8A6B22;--gray:rgba(20,23,28,.45);
---serif:'Gowun Batang',Georgia,serif;--mono:'IBM Plex Mono',ui-monospace,monospace;--sans:'IBM Plex Sans',system-ui,sans-serif}
-body{background:#CFCDC4;font-family:var(--sans);color:var(--ink);display:flex;justify-content:center;padding:40px 0}
+--serif:'Gowun Batang',Georgia,'Times New Roman',serif;--mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+body{background:#CFCDC4;font-family:var(--sans);color:var(--ink);display:flex;justify-content:center;padding:40px 24px}
 a{color:inherit;text-decoration:none}
-.sheet{width:1280px;flex:none;background:var(--paper);padding:48px 56px 32px;display:flex;flex-direction:column}
+.sheet{width:100%;max-width:1280px;min-width:0;background:var(--paper);padding:48px 56px 32px;display:flex;flex-direction:column}
+.co,.ptext,.quote,.srcline,.titles span,.slim .w{overflow-wrap:anywhere}
 .masthead{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:16px;border-bottom:3px solid var(--ink)}
 .kick{font-family:var(--mono);font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 .masthead h1{font-family:var(--serif);font-weight:700;font-size:40px;line-height:1;letter-spacing:-.02em}
@@ -61,6 +62,32 @@ a{color:inherit;text-decoration:none}
 .legend .lt{flex:none;width:16px;font-family:var(--mono);font-weight:500}
 .foot{margin-top:16px;padding-top:14px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .dot{width:6px;height:6px;background:var(--red)}
+.countbar,.slim,.foot{flex-wrap:wrap}
+/* Narrower than the 1280px sheet: the sheet shrinks and the grids stack, so no column
+   is clipped or needs a sideways scroll. */
+@media (max-width:1100px){
+.card{grid-template-columns:120px 1fr;gap:16px 24px}
+.card .pillars3,.card .srcline{grid-column:1/-1}
+.legend{grid-template-columns:1fr 1fr;gap:24px 40px}
+.legend>div:last-child{grid-column:1/-1}
+}
+@media (max-width:820px){
+body{padding:24px 12px}
+.sheet{padding:32px 24px 24px}
+.masthead{flex-wrap:wrap;gap:12px}
+.roleplate{text-align:left}
+.hero{grid-template-columns:1fr}
+.hero>.hex{grid-row:1}
+.pillars2,.pillars3,.legend{grid-template-columns:1fr}
+.countbar{gap:6px 16px}
+}
+@media (max-width:480px){
+body{padding:0}
+.sheet{padding:24px 16px 20px}
+.masthead h1{font-size:30px}
+.hero .co{font-size:30px}
+.card{grid-template-columns:1fr}
+}
 @media print{body{background:#fff;padding:0}}
 </style>
 </head>
@@ -118,8 +145,8 @@ a{color:inherit;text-decoration:none}
   <div>
     <h3>Tier scale</h3>
     <ul>
-      <li><span class="lt" style="color:var(--red)">S</span><span>Drop everything: source this morning, the window is hours wide.</span></li>
-      <li><span class="lt" style="color:var(--green)">A</span><span>Act today: strong fit or strong openness, start a name list.</span></li>
+      <li><span class="lt" style="color:var(--red)">S</span><span>Drop everything: top fit and clear openness, source it before anything else.</span></li>
+      <li><span class="lt" style="color:var(--green)">A</span><span>Act this run: strong fit or strong openness, start a name list.</span></li>
       <li><span class="lt" style="color:var(--gold-dk)">B</span><span>Watch: real signal, capped ceiling, recheck next run.</span></li>
       <li><span class="lt" style="color:var(--gray)">C</span><span>Ignored: kept visible so the call can be overruled.</span></li>
     </ul>
@@ -130,7 +157,7 @@ a{color:inherit;text-decoration:none}
   </div>
   <div>
     <h3>Marks</h3>
-    <p>Center letter = tier, blended from both judges' six-axis reads. Fresher signals sort first when tiers tie. <span style="color:var(--gold-dk)">◆</span> on an axis = a wildcard lateral bridge fired there, named on the card.</p>
+    <p>Center letter = tier, the average of both judges' tier calls. The hexagon and the text are the advocate's read; the skeptic's read moves the tier or holds the card. Job titles are inferred from the signal, not named by the source. Fresher signals sort first when tiers tie. Ages count whole days to the run date in the count bar; a signal older than its source window says so on its tag. <span style="color:var(--gold-dk)">◆</span> on an axis = a wildcard lateral bridge fired there, named on the card.</p>
   </div>
 </div>
 

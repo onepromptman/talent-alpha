@@ -2,13 +2,12 @@
 
 Thanks for helping. Small, focused pull requests are easiest to review.
 
-This repository is generated from a module of onepromptman/talentai by script. A pull
-request here is welcome: a maintainer makes the same change in the module and publishes
-again, so it may land in a slightly different form.
+Make changes directly in this repository. Keep runtime instructions, schemas and
+tests together. The plugin and its tests need nothing outside this repository.
 
 ## Set up
 
-The checks need Python 3.11 or later (`python3 --version`):
+The checks need Python 3.10 or later (`python3 --version`), the same floor as the plugin:
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
@@ -26,7 +25,7 @@ CI runs these, and any other checks it lists, in `.github/workflows/ci.yml`.
 
 ## House rules
 
-- Keep the scripts working on Python 3.9: they run on the user's own `python3`.
+- Keep the scripts working on Python 3.10: they run on the user's own `python3`.
 - No real candidate, employee or client data anywhere, including tests and examples.
 - Plain English in docs, short sentences, no em dashes.
 

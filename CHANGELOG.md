@@ -1,11 +1,109 @@
 # Changelog
 
+## [1.5.0] (unreleased candidate): role-first daily sourcing, 2026-11-09
+
+- Setup explains the priority model, asks which roles and geographies to target,
+  proposes relevant signals and confirms a reusable sourcing plan per role.
+- Saved targets export validated n8n Config values and activate a plugin role
+  without changing shared profile sections or other kits. Separate role memory
+  prevents one role's review from hiding an event from another.
+- Both builds use the same targeting playbook and carry seniority, skills,
+  location/work terms, triggers and exclusions into the scanner and judges.
+- n8n validates Config before sources, bypasses disabled funding fetches, filters
+  stale events before model calls, respects maxShown and preserves shown slots
+  when a higher-ranked event is held. Only the explicit demo skips freshness.
+- Cowork ZIP instructions and live-versus-demo checks are clarified. Local n8n
+  engine smoke fixtures replace external services; account acceptance is separate.
+
+## [1.4.0] (unreleased candidate): first-install validation fixes, 2026-11-07
+
+- Upload: every manifest description is 487 characters (the account upload refuses
+  more than 500); version 1.4.0 in both manifests, MODULE.yaml and the README badge.
+- Run date: `--as-of YYYY-MM-DD` on `state.py dedupe` and `render.py join`,
+  `reconcile` and `build` (default today, UTC). Ages count whole days to it, the
+  count bar names it, and an event older than its window says so on its tag. The
+  demo and the frozen evaluation run as of 2026-09-07, the fixture's own date. The
+  legend no longer promises "today" or "this morning".
+- Dedupe drops and names events older than their source window (3 days WARN, 7 days
+  funding news) on the run date, so a seen id pruned after 30 days cannot return.
+- Size and stage fit: optional `company_size` and `company_stage` in the profile and
+  setup. Without one, the axis is M, the stated neutral value, and `build` rejects
+  any other advocate score for it. Card text that names a fit axis fails `build`,
+  `verify` and the n8n reconcile. Repairs remove an ungrounded claim instead of
+  substituting an inference.
+- Critic returns a file on any MED finding in `why`, `hook` or `edge`; LOW stays
+  advisory. The orchestrator snapshots each repair lap, and holds compare the
+  verdicts that passed the critic (documented, unchanged in code).
+- `check-config` prints one line naming every blank field and exits 1, no traceback.
+- The card loads no web fonts and shrinks below 1280px; grids stack at 1100, 820 and
+  480px. The Function Core skip message no longer names a missing script.
+- Setup checks that the session has a `WebSearch` tool and says plainly when it
+  does not, and walks the optional n8n route one step at a time instead of handing
+  over a file. The evaluation prompt says what a hand run substitutes for its
+  harness placeholders. The README picture shows the fixed card.
+- The card legend now says what is true: the tier is the average of both judges'
+  tier calls, and the hexagon and text are the advocate's read. It also says job
+  titles are inferred from the signal. The sample and the README picture match.
+- The scanner's `functions` reach the judges as `inferred_functions` in
+  `trusted_candidates.json` and in the n8n join, and the judge and critic briefs
+  say a source never named them.
+- n8n: the Trust-Boundary Join drops a shortlisted event older than its source
+  window. `build_workflows.py` injects the window table from `state.py`; the demo
+  export gets none, because its samples carry fixed dates.
+- Setup no longer asks for `min_shown`, and the profile no longer lists it. The
+  value never changed a card. `--min-shown` is still accepted and ignored.
+- Repository: CI no longer fetches another repository, `MODULE.yaml` drops its
+  `core:` and `supersedes:` blocks, and `KIT-CORE.md` is gone (the runtime copy is
+  `skills/talent-alpha/references/00_SHARED_CORE.md`).
+
+## Completion review (unreleased)
+
+- Add a no-key, dependency-free sample command and repeatable platform acceptance cases.
+- Refuse incomplete card templates and template/output collisions before recording events.
+- Share renderer/validator tier logic, normalize n8n model output once, and generate tool-free chains from maintained prompts.
+- Use current-family Claude plugin aliases; preserve the frozen evaluation model.
+- Validate saved card schemas, exact judge coverage and diagram values against the judge's actual verdict.
+- Reject nested template slots before they can erase a source link or retire an unseen event.
+- Run the frozen model case through the checked production build before recording state.
+
+
 All notable changes to Talent Alpha. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); versions are semantic.
 
 ---
 
 ## [Unreleased]
+
+### n8n reliability
+
+- The canvas follows eight numbered stages with plain-language explanations, plus
+  setup and error notes. Both exports share the layout; execution behavior is unchanged.
+
+- The identified original test scanner shares all 30 node IDs and its wiring with
+  the public export. Its maintained Code nodes now generate both workflow exports.
+- Source, scanner, judge and email errors stop execution. Valid empty feeds stop
+  before scoring; they are not confused with malformed or failed responses.
+- Both judges must cover every event exactly once, source links reach the card,
+  unsupported numeric claims fail, and sharp disagreement is always held.
+- Rendering verifies required slots before email. Event IDs reach dedupe storage
+  only after Gmail returns a message ID. An uncertain send or failed state write
+  can still require a resend; delivery is not guaranteed exactly once.
+- Live deployment credentials, profiles and test evidence stay outside this repository.
+
+### Plugin reliability
+
+- The production `build` command requires complete, unique verdicts from both judges,
+  checks grounding and numeric claims, enforces the shipped content schema, renders and
+  verifies temporary artifacts, and only then publishes the card and records state.
+- Funding-company and location extraction must occur in source text. Original titles
+  and snippets travel to the judges and critic. ISO dates and naive timestamps use UTC.
+- Sharp S/C disagreement is held even in the first slot; the preferred minimum does not
+  override review. Dedupe removes repeated IDs within one batch as well as prior runs.
+- Setup exports and checks `targetSectors`; a local PROFILE-SPEC documents the standalone
+  profile. Scanner halts and unresolved critic findings stop downstream execution.
+- Contribution and release ownership are local to this standalone edition. The n8n
+  deployment is checked separately from the plugin.
+
 
 ### Changed
 

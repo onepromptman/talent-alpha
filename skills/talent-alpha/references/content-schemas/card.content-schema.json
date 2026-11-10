@@ -12,12 +12,12 @@
       "additionalProperties": false,
       "properties": {
         "author": {"type": "string", "description": "Recipient name; 'Your name' if unset in the profile."},
-        "run_date": {"type": "string", "description": "Human-readable run timestamp, e.g. an RFC-1123 string."},
+        "run_date": {"type": "string", "description": "Human-readable build timestamp, e.g. an RFC-1123 string."},
         "company_name": {"type": "string"},
         "role_title": {"type": "string"},
         "role_location": {"type": "string"},
         "scanned_count": {"type": "integer", "minimum": 0, "description": "Total candidates entering reconcile, shown plus held."},
-        "window_note": {"type": "string", "description": "e.g. '72h window'."}
+        "window_note": {"type": "string", "description": "Source windows and the run date ages count to, e.g. 'WARN: 3d; funding news: 7d; ages as of 2026-09-07'."}
       }
     },
     "candidates": {
@@ -37,7 +37,7 @@
           "location": {"type": "string"},
           "employees_affected": {"type": ["integer", "null"]},
           "event_type": {"type": "string", "enum": ["layoff", "shutdown", "funding_distress"]},
-          "event_age_label": {"type": "string", "description": "'today', '1d ago', or 'Nd ago'."},
+          "event_age_label": {"type": "string", "description": "Whole days to the run date: 'today', '1d ago' or 'Nd ago', with ', outside the Nd window' appended when the event is older than its source window."},
           "age_days": {"type": "integer", "minimum": 0},
           "titles": {"type": "array", "items": {"type": "string"}},
           "tier": {"type": "string", "enum": ["S", "A", "B", "C", "HELD"]},

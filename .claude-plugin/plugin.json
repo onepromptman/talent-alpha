@@ -1,7 +1,7 @@
 {
   "name": "talent-alpha",
-  "version": "1.3.0",
-  "description": "A nightly-or-on-demand scan of layoff/WARN notices and funding-distress news that scores every signal against your open role and emails or renders a single ranked card: who just became reachable, why now, your outreach hook, and your concrete edge. A fast scanner shortlists candidates, then two independent judges (an Advocate and a Skeptic) argue each one before it is reconciled onto the card, so no single model grades its own work. Ships both as a standalone n8n workflow (for a real scheduled nightly run) and as this Cowork/Claude Code plugin (for the identical pipeline run on demand, in-session). Ships in the talentai marketplace beside the other three recruiting kits, and installs on its own.",
+  "version": "1.5.0",
+  "description": "A nightly or on-demand scan of layoff/WARN notices and funding-distress news that scores each signal against your open role and emails or renders one ranked card: who just became reachable, why now, your outreach hook and your edge. A fast scanner shortlists, then two independent judges (Advocate and Skeptic) argue each candidate, so no single model grades its own work. Ships as a standalone n8n workflow and as this Cowork/Claude Code plugin. Installs from onepromptman/talent-alpha.",
   "author": {
     "name": "OnePromptMan"
   },

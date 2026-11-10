@@ -3,7 +3,7 @@
     {
       "id": "warn-100201",
       "tier": "A",
-      "openness": "H", "role_fit": "M", "product_fit": "M", "region_fit": "H", "size_fit": "M", "stage_fit": "H",
+      "openness": "H", "role_fit": "M", "product_fit": "M", "region_fit": "H", "size_fit": "M", "stage_fit": "M",
       "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
       "titles": ["Reliability Engineer", "Automation Test Engineer"],
       "why": "Kestrel's 85-person layoff is fresh and directly comparable, though the filing does not say which functions were cut.",
@@ -13,7 +13,7 @@
     {
       "id": "fund-77a1c9",
       "tier": "B",
-      "openness": "M", "role_fit": "M", "product_fit": "M", "region_fit": "H", "size_fit": "L", "stage_fit": "M",
+      "openness": "M", "role_fit": "M", "product_fit": "M", "region_fit": "H", "size_fit": "M", "stage_fit": "M",
       "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
       "titles": ["Test Engineer", "Reliability Engineer"],
       "why": "Verity's cuts are reported but not yet a confirmed completed layoff, so openness is uncertain.",
@@ -23,7 +23,7 @@
     {
       "id": "warn-100207",
       "tier": "A",
-      "openness": "M", "role_fit": "M", "product_fit": "M", "region_fit": "M", "size_fit": "H", "stage_fit": "M",
+      "openness": "M", "role_fit": "M", "product_fit": "M", "region_fit": "M", "size_fit": "M", "stage_fit": "M",
       "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
       "titles": ["Manufacturing Engineer", "Process Engineer"],
       "why": "The 40-person closure at Redline is confirmed and dated; fabrication skill transfers reasonably to sensor manufacturing.",
@@ -33,7 +33,7 @@
     {
       "id": "fund-88b2f4",
       "tier": "C",
-      "openness": "L", "role_fit": "M", "product_fit": "M", "region_fit": "L", "size_fit": "M", "stage_fit": "L",
+      "openness": "L", "role_fit": "M", "product_fit": "M", "region_fit": "L", "size_fit": "M", "stage_fit": "M",
       "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
       "titles": ["Reliability Engineer"],
       "why": "This is a single, single-source funding rumor with no confirmed staffing action; too thin to act on yet.",

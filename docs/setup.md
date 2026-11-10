@@ -1,6 +1,7 @@
 # Setup - Talent Alpha (n8n)
 
-About 15 minutes, no coding. Every step here also has a matching sticky note on
+This integration preview needs an n8n workspace and the accounts below. Complete
+[the platform acceptance cases](ACCEPTANCE.md) before scheduling it. Every step here also has a matching sticky note on
 the n8n canvas once you import the workflow; this page is the full picture if
 you'd rather read it up front.
 
@@ -30,8 +31,9 @@ n8n -> **Credentials** -> **New**, then attach each on the matching node(s):
 | **Perplexity** (optional) | [perplexity.ai](https://www.perplexity.ai) API settings | **Fetch Funding-Distress Signals** |
 | **Gmail** | connect your Google account in n8n | **Email Overnight Digest**, **Email Error Alert** |
 
-Only want WARN layoffs, not funding news? Delete **Fetch Funding-Distress Signals**
-and **Normalize Funding-Distress Items** and skip the Perplexity credential.
+Only want WARN layoffs? Set `includeFundingDistress` to `false` in Config. The
+funding branch is bypassed without calling Perplexity; no graph editing or
+Perplexity credential is needed. WARN Firehose remains required for this workflow.
 
 ## 3. Create one Data Table
 
@@ -43,7 +45,13 @@ workspace has different internal table IDs).
 
 ## 4. Tell it who you're hiring - the **Config** node
 
-Open **Config** and edit three things:
+Talent Alpha starts from the role, then proposes relevant triggers. A useful
+signal is fresh and checkable, overlaps the work you need, and fits where you can
+hire. A company in distress alone is not enough. Read the
+[targeting playbook](../skills/talent-alpha/references/03_TARGETING_PLAYBOOK.md)
+for examples and the difference between "investigate today" and "watch".
+
+Open **Config** and set these fields:
 
 - **targetSectors** - the industries whose funding trouble you want to hear about,
   as one comma-separated line (for example `semiconductor, precision-manufacturing`).
@@ -54,7 +62,19 @@ Open **Config** and edit three things:
   support, benefits, ownership scope). Be specific; vague profiles produce vague
   edges.
 - **openRole** - the role you're filling: `title`, `functions` (the adjacent
-  titles that still count as a match), and `location`.
+  titles that still count as a match), `location`, and a stable `id`.
+- **sourcingCriteria** - optional seniority, skills, workArrangement
+  (`onsite`, `hybrid`, `remote`), eligibleLocations, eventTypes (`layoff`,
+  `shutdown`, `funding_distress`), priorityTriggers and excludeCompanies.
+  These guide both the scanner and the judges; known company exclusions and
+  disabled types are also filtered in code. Unknown location or affected work
+  stays a question to verify. Do not interpret remote as worldwide.
+- **companyName**, **companyFacts** - the hiring company and its explicitly stated
+  `size`/`stage`. Empty facts keep those scores neutral. The pitch stays in
+  companyProfile; do not put the company name in place of a real offer.
+- **maxShown** and **includeFundingDistress** - default 10 (1-12) and true.
+- **stateNamespace** - a stable role ID for separate memory per role. Use an
+  empty string when retaining an existing single-role install's unprefixed IDs.
 
 **Already run `talent-alpha-setup` in Claude Code or Cowork?** It reads your
 shared `onepromptman-profile.md` and writes `talent-alpha-n8n-config.json` in
@@ -62,20 +82,35 @@ your working folder in exactly this shape. Open it, copy the JSON, and paste
 it as the **Config** node's Value (Execute Mode: raw) instead of typing this
 by hand.
 
+For several roles, import one workflow per role and paste that role's
+`talent-alpha-n8n-config-<id>.json`. They can share a Data Table when each has a
+different stateNamespace. Changing a namespace resets what that role considers
+seen; preserve it on upgrades. A Config validation error stops before feed calls.
+
 ## 5. Set your email + error workflow
 
 - Open **Email Overnight Digest** and set the recipient to your address (same on
   **Email Error Alert**).
-- After you save the workflow once: **Settings -> Error Workflow -> this workflow**,
-  so a failed run emails you instead of failing silently.
+- For automatic error alerts, select a published error-handler workflow under
+  **Settings -> Error Workflow**. n8n may reject a reference to this workflow
+  while it has no published version. Leave the inactive draft unlinked, then
+  configure the handler when publishing. If you use this workflow itself, its
+  **On Workflow Error** branch supplies the handler,
+  so an automatic failed run can email you. Fetch, scoring and digest-delivery
+  errors stop the workflow; they are not counted as a quiet day. If Gmail itself
+  is unavailable, the email alert may fail too; inspect Executions for the error.
 
 ## 6. Test, then schedule
 
 Click **Execute Workflow** to run once now. The card is the output of the
 **Render Scanner Report** node (open its output to view the HTML) and it's emailed
-to you. First run: everything is new, so you get a full card; later runs only
-surface events you haven't seen. When you're happy, change the hour on **Nightly
-06:00 Scan** if you like, and toggle the workflow **Active**.
+to you when eligible events reach the card. A first live run can legitimately
+have no matches; the fictional demo is the route for a guaranteed sample batch.
+Inspect the execution to distinguish empty feeds, stale/disabled events and an
+empty shortlist from a failed node. Later runs only surface unseen events for
+that role. When you're happy, set the workflow timezone and hour on **Nightly 06:00 Scan**, then publish it
+when the sources and delivery have passed your test. An imported copy stays inactive
+until you publish it (older n8n versions call this Activate).
 
 ## Upgrading an existing install
 
@@ -106,18 +141,34 @@ the new workflow from this repository.
 
 1. **Pull** - two feeds: WARN layoff/closure notices and funding-distress news.
 2. **Shortlist** - a fast model (Haiku) does a broad-recall scan against your role.
+   An event older than its source window (3 days for WARN, 7 for funding
+   news) is dropped before model calls and checked again at **Trust-Boundary Join**. The demo workflow skips this,
+   because its sample signals carry fixed dates.
 3. **Judge** - an **Advocate** and a **Skeptic** (both Sonnet) independently argue
    each candidate on six axes and assign a tier.
-4. **Reconcile** - the two judges' tiers are blended, fresher signals sort first
-   when tiers tie, and the top 4-10 are kept. One model never grades its own work.
-5. **Render + email** - the survivors become a one-page card, emailed to you.
+4. **Reconcile** - both judges must cover every trusted event exactly once. Their
+   tiers are blended; freshness breaks ties. Sharp S/C disagreement is always held,
+   and unsupported numeric claims fail the run. These checks do not prove news true.
+5. **Render + email** - the card retains source links. Rendering is checked before
+   email. Only a confirmed Gmail message ID allows **Confirm Digest Delivery** to
+   pass event IDs to **Record Scanned Events**. A failed send leaves them unseen.
+   If Gmail sends but the response or later state write is lost, a retry can resend;
+   delivery is not guaranteed exactly once.
+
+A valid empty feed is distinct from a failed response. When neither source has
+new events, scoring stops without model calls. Different URLs about the same
+real-world layoff are still distinct source IDs. The n8n path uses two judges
+and deterministic checks; the plugin's additional critic is a separate feature.
 
 ## Tuning
 
-- **How many make the card / how strict** - the **Reconcile Judges** node
-  (`MIN_SHOWN`, `MAX_SHOWN`, and how tiers blend).
-- **The scoring itself** - the **Signal Scanner Agent** and the two judge nodes
-  hold the prompts; reference copies live in [`../n8n/prompts/`](../n8n/prompts/).
+- **How many make the card** - `maxShown` in Config. No minimum overrides a
+  disagreement hold. Held items do not consume the available shown slots.
+- **The scoring itself** - edit the maintained prompts in
+  [`../n8n/prompts/`](../n8n/prompts/). Code nodes are maintained in `n8n/code/`;
+  run `python n8n/tools/build_workflows.py` after editing either. `--check`
+  verifies both exports match those sources and the
+  shared HTML template. Keep credential IDs and private profiles out of public exports.
 - **Cadence** - the **Nightly 06:00 Scan** trigger. Native scheduling on the
   Claude Code / Cowork side is unconfirmed for this build; n8n's own scheduler
-  is the reliable place to run this unattended today.
+  provides the scheduling route after the live acceptance cases pass.

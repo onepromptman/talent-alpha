@@ -12,10 +12,10 @@ so it merges into the same scanner and judge panel unmodified.
 `limit=100`. Requires a free API key (header `X-API-Key`; get one at
 warnfirehose.com/account, 25 calls/day).
 
-**Retrieval, in-session.** Claude Code / Cowork has no tool that can attach a
-custom auth header to an outbound request (`WebFetch` takes a URL and a prompt
-only), so calling an authenticated API like WARN Firehose is not reliably
-available in-session. This plugin uses `WebSearch` instead: search for recent
+**Retrieval, in-session.** This plugin ships no authenticated WARN connector.
+Its `WebFetch` route has no custom-header input. A credential-bearing shell
+or custom connector would require separate setup and testing.
+This plugin uses `WebSearch`: search for recent
 WARN Act notices in the target industries and states, e.g. "WARN Act notice
 filed layoff <industry> <state>" over roughly the last 3 days. This is a real
 tradeoff, not a silent downgrade: state it plainly to the user during setup
@@ -66,20 +66,27 @@ it. Never let a Reported item's `why` read as confidently as a Filed one.
 ## Trust boundary (enforced in `scripts/render.py`, not by the agents)
 
 An agent's output is only ever a shortlist or a verdict; it is never treated as
-a source of truth for company facts. Every id the scanner or a judge returns is
-checked against the trusted batch it was handed, and any id not present there
-is silently dropped before it can reach the card. This is a mechanical check,
-not something an agent self-polices, precisely because a model can and does
-occasionally invent a plausible-looking id.
+a source of truth for company facts. The Python join drops scanner IDs absent
+from the raw batch; a nonempty shortlist with no trusted matches fails. The
+n8n join fails immediately on an unknown scanner ID. Both paths require each
+judge to cover every trusted candidate exactly once; unknown, duplicate or
+missing verdict IDs fail before a card is delivered. These checks are enforced
+in code because a model can invent a plausible-looking ID.
 
 ## Freshness
 
-There is no hard cutoff that drops an old event outright; freshness is a
-**sort tiebreak and a display label**, not a tier penalty, matching the
-Advocate/Skeptic scoring below. An event's `event_age_label` (`today`, `1d
-ago`, `Nd ago`) is computed from `published_at` at reconcile time. A Skeptic
-may still cite genuine staleness as a reason to drop a tier; that is a
-judgment call on the specific candidate, not an automatic rule.
+Every age counts whole calendar days from `published_at` (UTC date) to the
+run date, `RUN_DATE` (`--as-of`, default today in UTC; a frozen fixture run
+pins the fixture's own date). The source window is a hard cutoff at dedupe:
+`state.py dedupe` drops, counts and names any event older than 3 days (WARN
+layoffs and shutdowns) or 7 days (funding distress) on the run date, because a
+web search returns older articles the n8n feeds would never fetch. Inside the
+window, freshness is a **sort tiebreak and a display label**, not a tier
+penalty. An event's `event_age_label` (`today`, `1d ago`, `Nd ago`) is
+computed at reconcile time; an event older than its window (one that skipped
+dedupe) is labelled `Nd ago, outside the Nd window`. A Skeptic may still cite
+genuine staleness as a reason to drop a tier; that is a judgment call on the
+specific candidate, not an automatic rule.
 
 ## Adding a third category
 

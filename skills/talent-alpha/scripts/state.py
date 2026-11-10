@@ -32,9 +32,16 @@ Shape:
 the file and recognize what it is remembering); nothing in the pipeline reads
 it back. Entries older than --max-age-days (default 30) are dropped on every
 `record` call, so the file does not grow without bound across months of
-nightly runs; 30 days is comfortably past both source windows (3 days for
-WARN, 7 for funding-distress), so nothing currently reachable by a fresh pull
-can still be sitting just past the prune line.
+nightly runs.
+
+SOURCE WINDOWS. `dedupe` is also where the scan window is enforced: an event
+whose `published_at` is more than WINDOW_DAYS old on the run date (--as-of,
+default today in UTC) is dropped and counted, never handed to a model. Ages
+are whole calendar days from the event's UTC date to the run date. The
+window is what keeps the 30-day prune safe: an id pruned from this file
+belongs to an event long outside its window, so a later pull that returns
+the same old article cannot bring it back as new. A web search can return
+old articles; the n8n feeds are windowed by their own queries.
 
 CONTRACT WITH THE SKILL: call `dedupe` once, near the top of every run, before
 spending any model call on an event. Call `record` once, near the end of
@@ -63,9 +70,51 @@ log = runlog.get_logger("talent-alpha.state")
 
 SCHEMA_VERSION = 1
 
+# Days an event stays reachable after publication, by event_type. The card's
+# window note and the dedupe drop both read this one table.
+WINDOW_DAYS = {"layoff": 3, "shutdown": 3, "funding_distress": 7}
+# Seen events older than this are pruned from state on record.
+MAX_AGE_DAYS = 30
+
 
 def now_iso():
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def utc_today():
+    return datetime.datetime.now(datetime.timezone.utc).date()
+
+
+def parse_as_of(value):
+    """argparse type for --as-of: the run date as YYYY-MM-DD."""
+    try:
+        return datetime.date.fromisoformat(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"--as-of must be a date as YYYY-MM-DD, got {value!r}"
+        ) from None
+
+
+def parse_timestamp(value):
+    """Use UTC consistently, including dates and timestamps without an offset."""
+    if not isinstance(value, str):
+        raise TypeError("published_at must be an ISO date or timestamp")
+    dt = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    return dt.astimezone(datetime.timezone.utc)
+
+
+def age_in_days(published_at, as_of):
+    """Whole calendar days from the event's UTC date to the run date.
+
+    Negative for an event dated after the run date; None if the date cannot be
+    parsed (the trust-boundary join reports that event, so dedupe passes it on)."""
+    try:
+        published = parse_timestamp(published_at)
+    except (ValueError, TypeError):
+        return None
+    return (as_of - published.date()).days
 
 
 def load_state(path):
@@ -105,16 +154,40 @@ def cmd_dedupe(args):
         events = json.load(f)
     state = load_state(args.state)
     seen = state["seen_events"]
-    fresh = [e for e in events if e.get("event_id") not in seen]
-    skipped = len(events) - len(fresh)
+    as_of = args.as_of or utc_today()
+    fresh = []
+    already = 0
+    outside = []
+    batch_ids = set()
+    for e in events:
+        event_id = e.get("event_id")
+        if not isinstance(event_id, str) or not event_id:
+            raise ValueError("every raw event needs a nonempty event_id")
+        window = WINDOW_DAYS.get(e.get("event_type"))
+        age = age_in_days(e.get("published_at"), as_of)
+        if event_id in seen or event_id in batch_ids:
+            already += 1
+        elif window is not None and age is not None and age > window:
+            outside.append(
+                f"{event_id} ({age}d old, {e['event_type']} window {window}d)"
+            )
+        else:
+            fresh.append(e)
+        batch_ids.add(event_id)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(fresh, f, indent=2)
         f.write("\n")
     print(
-        f"dedupe: {len(events)} pulled, {skipped} already seen, {len(fresh)} new -> {args.out}"
+        f"dedupe: {len(events)} pulled, {already} already seen, {len(outside)} outside "
+        f"the source window as of {as_of.isoformat()}, {len(fresh)} new -> {args.out}"
+        + "".join(f"\n  outside window: {item}" for item in outside)
     )
     log.info(
-        "dedupe: %d pulled, %d already seen, %d new", len(events), skipped, len(fresh)
+        "dedupe: %d pulled, %d already seen, %d outside window, %d new",
+        len(events),
+        already,
+        len(outside),
+        len(fresh),
     )
 
 
@@ -201,6 +274,13 @@ def main(argv=None):
         required=True,
         help="Where to write the filtered (new-only) events array.",
     )
+    d.add_argument(
+        "--as-of",
+        type=parse_as_of,
+        default=None,
+        help="Run date (YYYY-MM-DD) that event ages count to; default today (UTC). "
+        "Events older than their source window on this date are dropped.",
+    )
     d.set_defaults(func=cmd_dedupe)
 
     r = sub.add_parser(
@@ -216,8 +296,8 @@ def main(argv=None):
     r.add_argument(
         "--max-age-days",
         type=int,
-        default=30,
-        help="Prune entries older than this many days (default 30).",
+        default=MAX_AGE_DAYS,
+        help=f"Prune entries older than this many days (default {MAX_AGE_DAYS}).",
     )
     r.set_defaults(func=cmd_record)
 

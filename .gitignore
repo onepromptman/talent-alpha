@@ -22,3 +22,13 @@ evals/results/
 !evals/fixtures/*-profile.md
 !tests/fixtures/*-profile.md
 !evals/fixtures/talent-alpha-state.json
+
+# Local plugin runs and setup export
+talent-alpha-runs/
+talent-alpha-n8n-config*.json
+talent-alpha-targets.json
+talent-alpha-state-*.json
+
+# Fictional first-run output
+talent-alpha-demo/
+sample-run/

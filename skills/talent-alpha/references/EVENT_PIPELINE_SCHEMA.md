@@ -29,8 +29,11 @@ runs.
 ```
 
 `event_type` is one of `layoff`, `shutdown`, `funding_distress`. A funding
-category item may have empty `company`/`location` at this stage (news snippets
-do not always name it structurally); the scanner extracts them.
+category item may have empty `company`/`location` at this stage. The scanner
+can extract the company from the original title/snippet; the join accepts
+the extraction only when its words occur there. A missing location stays
+empty unless the scanner's extraction also occurs in that evidence.
+Dates and timestamps without an offset are interpreted as UTC.
 
 Write raw events to `<run folder>/raw_events.json` as a flat array, WARN and
 funding-distress items merged together.
@@ -90,7 +93,7 @@ present in `raw_events.json`).
 **Funding distress** (replaces the Perplexity node):
 
 ```
-<target industries> companies (NOT general software/SaaS/consumer-tech/gaming)
+<target industries> companies
 facing layoffs tied to funding distress, a down round, missed earnings, or
 restructuring, reported in the last 7 days. Exclude generic industry
 roundups, trackers, or archive pages -- only single-company news stories.
@@ -114,15 +117,19 @@ the government filing itself).
 
 ## 5. Judge batch and verdict output
 
-**Batch prompt**, built from the trust-boundary-joined shortlist (each line
-carries the scanner's own score and reasoning so the judges are not
-re-deriving it from scratch):
+**Batch prompt**, built from the trust-boundary-joined shortlist. Each line is
+one JSON object including the original title, snippet, source URL, date and
+company facts, plus the scanner's score and reasoning. Judges can check the
+actual evidence instead of relying on the scanner's summary. The scanner's
+`functions` arrive renamed `inferred_functions`: they are its inference, never
+a fact from the source:
 
 ```
+RUN_DATE: <the run date, YYYY-MM-DD; ages count to it>
 COMPANY_PROFILE: <profile.companyProfile>
 OPEN_ROLE: <profile.openRole as JSON>
 BEGIN_UNTRUSTED_CANDIDATES
-<id> | <company> | <event_type> | <functions,joined> | <location> | <published_at> | scanner_score=<n> | scanner_why=<text>
+<one complete trusted candidate as JSON>
 ...
 END_UNTRUSTED_CANDIDATES
 ```
@@ -140,7 +147,7 @@ END_UNTRUSTED_CANDIDATES
       "region_fit": "H", "size_fit": "H", "stage_fit": "H",
       "wildcard": {"fired": false, "axis_index": -1, "bridge": ""},
       "titles": ["Firmware Engineer", "Embedded Systems Engineer"],
-      "why": "Named layoff at a directly comparable hardware company, hours old.",
+      "why": "Named layoff at a directly comparable hardware company, filed on the run date.",
       "hook": "Saw the news about the restructuring, wanted to reach out directly.",
       "edge": "Comp band matches metro market; equity refresh available for senior hires."
     }
@@ -151,7 +158,12 @@ END_UNTRUSTED_CANDIDATES
 Axis order is fixed: openness, role_fit, product_fit, region_fit, size_fit,
 stage_fit (0 through 5, used by `wildcard.axis_index`). Tier is one of S, A, B,
 C. `edge` may be an empty string; that is a legitimate, common answer, never a
-gap to fill with filler.
+gap to fill with filler. In the plugin the orchestrator also hands each judge
+`COMPANY_FACTS` (the profile's optional `company_size` and `company_stage`):
+`size_fit` and `stage_fit` are M, the stated neutral value, unless both that
+fact and the employer's own size or stage are stated. `why`, `hook` and
+`edge` never name an axis; `render.py build` and the n8n reconcile both
+reject a card that does.
 
 ## 6. State file (working-folder root, persists across runs)
 
@@ -178,12 +190,15 @@ own docstring and in the orchestrator's Phase 0.
 
 See `references/content-schemas/card.content-schema.json` and its paired
 `card.example-content.json`. This is the only content schema in this plugin: a
-reconciled candidate ready for the renderer, blending both judges' verdicts
-plus the freshness label.
+reconciled candidate ready for the renderer. Only the tier is blended from
+both judges; bands, titles, why, hook and edge are the advocate's, and the
+freshness label is computed at reconcile time.
 
 ## 8. Freshness
 
-No section here carries a hard SLA cutoff the way a market-research pack
-might: the whole pipeline runs on a rolling window (3 days for WARN, 7 for
-funding-distress) set at the fetch step, and `event_age_label` is a display
-concern computed once, at reconcile time, from `published_at`.
+The whole pipeline runs on a rolling window (3 days for WARN, 7 for
+funding-distress). The n8n feeds apply it in their queries; in the plugin,
+`state.py dedupe` enforces it against the run date (`--as-of`), because a web
+search returns older articles. `event_age_label` is a display concern
+computed once, at reconcile time, in whole days from `published_at` to the
+run date.
