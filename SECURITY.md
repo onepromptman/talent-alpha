@@ -17,8 +17,8 @@ You can expect a first reply within seven days.
   it first.
 - An n8n workflow or webhook that accepts a request without its credential.
 - Untrusted content that injects scripts or remote resources into a rendered document.
-  The shipped template contains its own chart script and optional Google Fonts links;
-  those are intentional. It works with local fallback fonts when offline.
+  The shipped template contains its own chart script and uses local system fonts.
+  Opening a card does not load remote fonts or scripts. Source links open when clicked.
 - A secret, an API key or personal data committed to a repository.
 
 ## Where fixes land

@@ -7,7 +7,7 @@ how it remembers what you have seen, and what the plugin can touch.
 
 | You say | You get |
 | --- | --- |
-| `run talent alpha` | Both feeds pulled, a scanner shortlist, an Advocate and Skeptic pass, one rendered card, in a few minutes |
+| `run talent alpha` | Enabled sources checked, a scanner shortlist, an Advocate and Skeptic pass, one rendered card, in a few minutes |
 | `set up talent alpha` | The guided profile conversation, about 5 minutes |
 | `run talent alpha` (again, later) | Only events new since the last run; the state file remembers what it scanned |
 
@@ -15,8 +15,8 @@ how it remembers what you have seen, and what the plugin can touch.
 
 One HTML card ([sample](../samples/01_Overnight_Card_SAMPLE.html), on
 fictional companies). GitHub shows `.html` as source, so download it or clone the
-repository and open it in a browser. The template requests optional Google Fonts
-when online and uses local fallback fonts offline. Source links open only when clicked.
+repository and open it in a browser. The template uses local system fonts and its
+own chart script; it makes no remote font or script requests. Source links open only when clicked.
 
 The evidence vocabulary distinguishes three kinds of claim: **Filed** (an official WARN Act
 filing), **Reported** (dated news coverage) or **Company-stated** (a leverage detail

@@ -1,7 +1,7 @@
 # Install
 
-This page covers the **Cowork / Claude Code plugin** path: the identical
-pull-scan-judge-render pipeline as the n8n workflow, run on demand inside a
+This page covers the **Cowork / Claude Code plugin** path: the same sourcing stages
+as the n8n workflow, run on demand inside a
 conversation. Want the standalone, scheduled n8n workflow instead (or as
 well)? See [`setup.md`](setup.md) in this same folder -- that page is n8n
 only and does not cover plugin install.
@@ -29,23 +29,31 @@ claude plugin marketplace add onepromptman/talent-alpha
 claude plugin install talent-alpha@talent-alpha --scope user
 ```
 
-**Option B: manual.** Clone or download this repository and add the plugin's
-folder (the one that holds `.claude-plugin/plugin.json`) as a plugin in Claude
-Code or Cowork.
+**Option B: local checkout.** Clone or download this repository. Start Claude Code
+with the plugin folder (the one that holds `.claude-plugin/plugin.json`):
+
+```bash
+claude --plugin-dir /path/to/talent-alpha
+```
+
+This loads the plugin for that session. See the official
+[local plugin guide](https://code.claude.com/docs/en/plugins/create#load-a-plugin-from-a-directory-or-zip).
 
 ## Cowork (Claude desktop app)
 
-Open **Cowork**, then **Customize > Plugins**. Upload the provided
-`talent-alpha.zip` using the custom-plugin upload option. Open a new Cowork task
+Open **Cowork**, then **Customize > Plugins**. Upload a packaged
+`talent-alpha.zip` using the custom-plugin upload option. If you have a source
+checkout, [package its committed files](../CONTRIBUTING.md#package-a-reviewed-commit)
+first; `.claude-plugin/plugin.json` must be at the ZIP root. Open a new Cowork task
 and select a writable working folder for the profile, memory and cards. Enable
 web search and say `set up talent alpha`. The setup checks capabilities before
 claiming it can scan. Python 3.10+ must be available inside Cowork's execution
 environment, which may differ from the host computer's PATH.
 
-For repository installation after publication, add the
-`onepromptman/talent-alpha` marketplace in the plugin browser and install Talent
-Alpha. A locally prepared ZIP contains the candidate build; GitHub still serves
-the previously published version until the owner updates it.
+Install from `onepromptman/talent-alpha` when using the marketplace route in
+Claude Code. A marketplace installation and a manually uploaded ZIP update
+differently: update the marketplace plugin, or upload a newly packaged ZIP.
+Use one installation route for Talent Alpha in a session to avoid loading two copies.
 
 See Anthropic's [plugin installation guide](https://support.claude.com/en/articles/13837440-use-plugins-in-claude).
 Plugin skills may appear in ordinary chat, but this product's full run requires
@@ -58,8 +66,9 @@ set up talent alpha
 ```
 
 This writes the shared `## Kit: talent-alpha` block into
-`onepromptman-profile.md` -- the same profile file every kit in this
-marketplace reads and shares. The block it writes and owns holds:
+`onepromptman-profile.md`. The standalone marketplace contains only Talent Alpha;
+the profile format can also be shared with other compatible kits in your working
+folder. The block this plugin writes and owns holds:
 
 | Field | What it is |
 | --- | --- |

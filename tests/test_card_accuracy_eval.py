@@ -12,15 +12,13 @@ runs the real `state.py dedupe` -> `render.py join` -> `render.py reconcile` ->
 `evals/fixtures/raw_events.json` (the frozen pull) and
 `tests/fixtures/card-accuracy/{shortlist,advocate_verdicts,skeptic_verdicts}.json` (a
 hand-authored but representative scanner shortlist and judge pair). That proves mutual
-satisfiability against the ACTUAL reconcile formula, not a paraphrase of it
-(EVAL_TUNING.md: "prove mutual satisfiability with a shaped positive fixture that a real
-agent could produce").
+satisfiability against the actual reconcile formula using a fixture a real agent
+could produce.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
@@ -504,10 +502,9 @@ def test_validate_card_fails_on_seen_event_id(tmp_path):
 
 def test_validate_card_warns_on_small_batch(tmp_path):
     """Fewer than 5 candidates on the card is a WARNING, never a finding: a row-count floor
-    above what a slow night's data actually supports would force invention (EVAL_TUNING's
-    row-floor lesson). Keeping the first 2 candidates and their matching judge records
-    keeps every other check clean (idx 0/1 are shown either way, below both --min-shown 4
-    and --max-shown 10), isolating this one."""
+    above what a slow night's data actually supports would force invention. Keeping the
+    first 2 candidates and matching judge records keeps every other check clean,
+    isolating the warning. The compatibility --min-shown flag does not set a floor."""
     content_path, advocate_path, skeptic_path = _build_shaped_run(tmp_path)
     content = json.loads(content_path.read_text(encoding="utf-8"))
     content["candidates"] = content["candidates"][:2]
@@ -555,9 +552,7 @@ def test_validate_card_pins_held_branch_and_reason_string(tmp_path):
 
 
 def test_module_yaml_post_run_line_for_card_accuracy():
-    """Pin the literal post_run command: dropping --pull or --min-shown/--max-shown here
-    would silently disable the checks that need them (EVAL_TUNING.md: dropping a flag from
-    post_run can silently disable a check)."""
+    """Keep source grounding and the card cap in the evaluation's post-run check."""
     text = MODULE_YAML.read_text(encoding="utf-8")
     m = re.search(r"card-accuracy:\s*(.+)", text)
     assert m, "card-accuracy post_run line not found"
@@ -565,32 +560,26 @@ def test_module_yaml_post_run_line_for_card_accuracy():
     assert line == (
         "python skills/talent-alpha/scripts/validate_card.py check "
         "--card {workspace}/out/card.content.json --pull {workspace}/fixtures "
-        "--min-shown 4 --max-shown 10"
+        "--max-shown 10"
     )
 
 
 def test_prompt_pins_model_and_excludes_web_tools():
-    """`prompt.md` pins `model:` (ANTHROPIC_MODEL is not inherited by eval runs) and does
-    not add WebSearch/WebFetch to allowed_tools (the run makes no web queries; the eval's
-    own graders assert zero calls to either)."""
-    # Function Core is not vendored into this repository. Point FUNCTION_CORE_DIR at a
-    # local Function Core checkout to run this case (docs/ACCEPTANCE.md, TA-04).
-    fc = os.environ.get("FUNCTION_CORE_DIR")
-    if not fc:
-        pytest.skip(
-            "FUNCTION_CORE_DIR not set; point it at a local Function Core checkout "
-            "(docs/ACCEPTANCE.md, TA-04)"
-        )
-    core_build = Path(fc) / "build"
-    if str(core_build) not in sys.path:
-        sys.path.insert(0, str(core_build))
-    import eval_runner
+    """Check this case's declared contract without importing an external harness.
 
-    case = eval_runner.load_case(CASE_DIR)
-    assert case.model == "claude-sonnet-5"
-    assert {"Read", "Agent", "Bash"} <= set(case.allowed_tools)
-    assert "WebSearch" not in case.allowed_tools
-    assert "WebFetch" not in case.allowed_tools
+    These assertions cover the shipped frontmatter, not model execution or a
+    particular eval runner's YAML parser. The separate account cases cover those.
+    """
+    text = (CASE_DIR / "prompt.md").read_text(encoding="utf-8")
+    assert text.startswith("---\n")
+    frontmatter = text.split("---\n", 2)[1]
+    assert re.search(r"^model: claude-sonnet-5$", frontmatter, re.MULTILINE)
+    tools = re.search(r"^allowed_tools: \[([^\]\n]+)\]$", frontmatter, re.MULTILINE)
+    assert tools, "declare allowed_tools as an explicit inline list"
+    allowed = {name.strip() for name in tools[1].split(",")}
+    assert {"Read", "Agent", "Bash"} <= allowed
+    assert "WebSearch" not in allowed
+    assert "WebFetch" not in allowed
 
 
 def test_case_declares_both_web_tool_graders_at_max_zero():

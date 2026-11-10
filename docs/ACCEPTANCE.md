@@ -59,7 +59,7 @@ python -m pytest -q
 python n8n/tools/build_workflows.py --check
 ```
 
-Install Node to exercise the n8n Code-node tests; a skipped Node test means that route is BLOCKED. The optional Function Core case-loader test needs `FUNCTION_CORE_DIR` pointing at a local Function Core checkout; it does not call a model. Expected: all available tests pass and source/workflow equality passes. The golden sample, escaping, source provenance, unsupported numeric claims, independent judge coverage (including duplicate or extra saved verdict IDs), direct chain output and legacy envelopes are checked. The CLI and generated n8n tests use the same supplied fictional events and verdicts. This is not an n8n import or a model run.
+Install Node 24 to exercise the n8n Code-node tests; a skipped Node test means that route is BLOCKED. The suite is self-contained and checks the frozen eval's declared model and allowed tools without an external case loader. Expected: all tests pass without skips and source/workflow equality passes. The golden sample, escaping, source provenance, unsupported numeric claims, independent judge coverage (including duplicate or extra saved verdict IDs), direct chain output and legacy envelopes are checked. The CLI and generated n8n tests use the same supplied fictional events and verdicts. This is not an n8n import or a model run.
 
 ## Account cases
 

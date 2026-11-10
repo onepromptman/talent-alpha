@@ -19,4 +19,4 @@ evals:
     - python -m pytest -q
   cases: evals
   post_run:
-    card-accuracy: python skills/talent-alpha/scripts/validate_card.py check --card {workspace}/out/card.content.json --pull {workspace}/fixtures --min-shown 4 --max-shown 10
+    card-accuracy: python skills/talent-alpha/scripts/validate_card.py check --card {workspace}/out/card.content.json --pull {workspace}/fixtures --max-shown 10

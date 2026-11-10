@@ -65,7 +65,7 @@ script call below.
 
 8. Build through the same checked command as the production plugin:
 
-   `<python> {{plugin_dir}}/skills/talent-alpha/scripts/render.py build --raw <run folder>/new_events.json --trusted <run folder>/trusted_candidates.json --advocate <run folder>/advocate_verdicts.json --skeptic <run folder>/skeptic_verdicts.json --profile ./onepromptman-profile.md --state ./talent-alpha-state.json --author "Fictional example" --company-name "Solstice Yards" --role-title "Senior Reliability Engineer" --role-location "Denver, CO" --min-shown 4 --max-shown 10 --as-of 2026-09-07 --out <run folder>/content.json --html <run folder>/overnight_card.html`
+   `<python> {{plugin_dir}}/skills/talent-alpha/scripts/render.py build --raw <run folder>/new_events.json --trusted <run folder>/trusted_candidates.json --advocate <run folder>/advocate_verdicts.json --skeptic <run folder>/skeptic_verdicts.json --profile ./onepromptman-profile.md --state ./talent-alpha-state.json --author "Fictional example" --company-name "Solstice Yards" --role-title "Senior Reliability Engineer" --role-location "Denver, CO" --max-shown 10 --as-of 2026-09-07 --out <run folder>/content.json --html <run folder>/overnight_card.html`
 
    The command reconciles, validates, renders, verifies and then records state. Any failure
    stops the evaluation; route the diagnostic to its producing agent. Never bypass it

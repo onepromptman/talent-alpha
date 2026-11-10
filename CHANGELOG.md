@@ -1,6 +1,20 @@
 # Changelog
 
-## [1.5.0] (unreleased candidate): role-first daily sourcing, 2026-11-09
+Notable changes to Talent Alpha. A version on `main` does not imply that a matching
+GitHub release ZIP or live account acceptance has been published.
+
+## [Unreleased]
+
+- Document maintained sources, generated artifacts, trust boundaries and failure limits.
+- Correct installation/update instructions and the card's offline font behavior.
+- Make the eval metadata test independent of an external repository; retain model
+  and tool checks. Remove the ignored minimum-card option from normal eval commands.
+- Document Node 24 for contributors and install it explicitly in CI. Pin GitHub
+  Actions to reviewed commits and bound the check job's runtime.
+
+## [1.5.0] - 2026-11-09
+
+### Role-first daily sourcing
 
 - Follow-up review: n8n size/stage use structured company facts and normalize
   unknown facts to neutral instead of aborting. Malformed-date feed rows are
@@ -24,7 +38,7 @@
 - Cowork ZIP instructions and live-versus-demo checks are clarified. Local n8n
   engine smoke fixtures replace external services; account acceptance is separate.
 
-## [1.4.0] (unreleased candidate): first-install validation fixes, 2026-11-07
+### First-install fixes developed as 1.4.0, included in 1.5.0
 
 - Upload: every manifest description is 487 characters (the account upload refuses
   more than 500); version 1.4.0 in both manifests, MODULE.yaml and the README badge.
@@ -65,7 +79,7 @@
   `core:` and `supersedes:` blocks, and `KIT-CORE.md` is gone (the runtime copy is
   `skills/talent-alpha/references/00_SHARED_CORE.md`).
 
-## Completion review (unreleased)
+### Completion review
 
 - Add a no-key, dependency-free sample command and repeatable platform acceptance cases.
 - Refuse incomplete card templates and template/output collisions before recording events.
@@ -76,14 +90,9 @@
 - Run the frozen model case through the checked production build before recording state.
 
 
-All notable changes to Talent Alpha. Format loosely follows
-[Keep a Changelog](https://keepachangelog.com/); versions are semantic.
+### Earlier preparation included in 1.5.0
 
----
-
-## [Unreleased]
-
-### n8n reliability
+#### n8n reliability
 
 - The canvas follows eight numbered stages with plain-language explanations, plus
   setup and error notes. Both exports share the layout; execution behavior is unchanged.
@@ -99,7 +108,7 @@ All notable changes to Talent Alpha. Format loosely follows
   can still require a resend; delivery is not guaranteed exactly once.
 - Live deployment credentials, profiles and test evidence stay outside this repository.
 
-### Plugin reliability
+#### Plugin reliability
 
 - The production `build` command requires complete, unique verdicts from both judges,
   checks grounding and numeric claims, enforces the shipped content schema, renders and
@@ -114,7 +123,7 @@ All notable changes to Talent Alpha. Format loosely follows
   deployment is checked separately from the plugin.
 
 
-### Changed
+#### Changed
 
 - The README follows the house shape in about 600 words: who it is for, the tags, where
   it runs and what each path needs, a diagram, a first run, your data, settings, what to
@@ -137,7 +146,7 @@ All notable changes to Talent Alpha. Format loosely follows
 - Licensed MIT, Copyright (c) 2026 OnePromptMan, one license for the whole marketplace;
   install lines point at the `talent-alpha` marketplace.
 
-### Fixed
+#### Fixed
 
 - **Every slot on the emailed card is escaped.** The n8n Render Scanner Report node
   already escaped the hero and card text, but the held-for-review line carried feed
@@ -166,7 +175,7 @@ All notable changes to Talent Alpha. Format loosely follows
   initial commit and neither changed afterwards. Nothing caught it because
   nothing compared them.
 
-### Added
+#### Added
 
 - **A golden byte-for-byte test**, mirroring talent-one's
   `test_example_content_reproduces_shipped_sample_byte_for_byte`: the shipped
@@ -176,7 +185,7 @@ All notable changes to Talent Alpha. Format loosely follows
   failure message carries the regeneration command. A companion test asserts the
   sample carries source provenance at all. 28 tests, was 26.
 
-### Added (docs)
+#### Added (docs)
 
 - **`CONNECTORS.md`**, the standalone connector surface every other module in
   this repo already had. Carries the three-tier table (Filed / Reported /
@@ -191,14 +200,14 @@ All notable changes to Talent Alpha. Format loosely follows
 - **`docs/INSTALL.md`** for the plugin path. `docs/` previously held only
   `setup.md`, which is n8n-only, so the plugin had no install page of its own.
 
-### Fixed (docs)
+#### Fixed (docs)
 
 - README version badge said 1.1.0 against `MODULE.yaml`/CHANGELOG 1.3.0.
 - README's repository layout listed three agents; there are four -- `critic`
   was wired in 1.3.0 and never added to that line. "Two small Python scripts"
   is three (`render.py`, `state.py`, `validate_card.py`).
 
-### Documented
+#### Documented
 
 - **The source-provenance block itself**, which shipped in the code but appeared
   in no changelog entry. Every card names where its claim came from: the tier

@@ -31,9 +31,9 @@ Talent Alpha never contacts candidates. The card names companies and job functio
 ![Three steps: install the plugin, say set up talent alpha, say run talent alpha](assets/quick-start.svg)
 
 1. **Install.** In Cowork, open **Customize > Plugins** and upload the Talent Alpha
-   plugin ZIP, or add the `onepromptman/talent-alpha` marketplace. Choose a working
+   plugin ZIP. In Claude Code, add the `onepromptman/talent-alpha` marketplace. Choose a working
    folder for your saved roles and cards. Claude Code instructions are also in
-   [installation](docs/INSTALL.md).
+   [installation](docs/INSTALL.md), including how to package a ZIP from source.
 2. **Set up.** Type `set up talent alpha` and answer the questions. About five minutes.
 3. **Run.** Type `run talent alpha`. A few minutes later a card is saved as an HTML file in your working folder. Open it in a browser.
 
@@ -154,8 +154,9 @@ python3 -m pytest -q
 ```
 
 `agents/` holds the scanner, judges and checker, `skills/` the orchestrator and setup,
-`n8n/` the workflows. The version is in `MODULE.yaml` and the plugin manifest, with
-changes in [CHANGELOG.md](CHANGELOG.md). Model tiers, state and scheduling:
+`n8n/` the workflows. The [architecture guide](docs/architecture.md) maps maintained
+sources, generated files, trust boundaries and tests. The version is in `MODULE.yaml`
+and the plugin manifest, with changes in [CHANGELOG.md](CHANGELOG.md). Model tiers, state and scheduling:
 [docs/how-it-works.md](docs/how-it-works.md).
 
 ### Standalone maintenance
