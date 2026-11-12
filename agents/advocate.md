@@ -31,7 +31,7 @@ For each candidate inside `BEGIN_UNTRUSTED_CANDIDATES` / `END_UNTRUSTED_CANDIDAT
 
 Copy `id` exactly as given. Never invent one.
 
-`inferred_functions` on a candidate is the scanner's guess at who was affected. No source names those functions unless the candidate's own `title` or `snippet` does. Treat it as a lead to check against that evidence, and never write `why`, `hook` or `titles` as if the filing or article named a function it did not.
+`inferred_functions` on a candidate is the scanner's guess at who was affected. No source names those functions unless the candidate's own `title` or `snippet` does. Treat it as a lead to check against that evidence, and never write `why`, `hook` or `titles` as if the filing or article named a function it did not. `titles` ships on the card as a chip row under the employer, so it reads as what the source named: list ONLY functions or teams the candidate's own `title` or `snippet` names, and write `[]` when it names none. Never copy `inferred_functions` into `titles`.
 
 ## CONTENT MAP
 

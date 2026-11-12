@@ -5,6 +5,9 @@ GitHub release ZIP or live account acceptance has been published.
 
 ## [Unreleased]
 
+- The advocate and skeptic briefs state the `titles` rule as an instruction: list only
+  functions or teams the source itself names, else an empty list. A live run on 2026-11-11
+  copied the scanner's guesses into `titles` on 5 of 6 candidates.
 - Document maintained sources, generated artifacts, trust boundaries and failure limits.
 - Correct installation/update instructions and the card's offline font behavior.
 - Make the eval metadata test independent of an external repository; retain model
