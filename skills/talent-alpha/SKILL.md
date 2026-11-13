@@ -248,11 +248,60 @@ Route a failure back to the producer with its diagnostic. Do not bypass a failed
 build by calling the low-level render or state-record commands. Those commands
 remain available for development and the frozen eval, not as a production shortcut.
 
-When the user requests a Noon handoff, or the saved schedule explicitly asks
-for one, add `--noon-handoff` to the build command. Report the path to
-`noon-targeting.json` next to the checked card. An empty `signals` list means
-no S or A signal qualified for the handoff. The scheduled run ends with the
-proposal. Use [the Noon pilot guide](../../docs/noon-targeting.md) for applying it.
+When the user requests a sourcing handoff (Noon or Juicebox), or the saved
+schedule explicitly asks for one, add `--sourcing-handoff` to the build command
+(`--noon-handoff` still works). Report the path to `sourcing-handoff.json` next
+to the checked card. Null `targets` means no S or A signal qualified. A
+scheduled run ends with the file and never pushes.
+
+### 2.7 Push to Noon or Juicebox (only when the user asks in this session)
+
+Talent Alpha supplies only `targets`: companies, event cities, source-named
+titles, the user's own company to exclude, the expiry date and the evidence.
+The `noon` and `juicebox` blocks are the same targets in each tool's shape.
+Everything else is copied from a template the user picks, so the search keeps
+the hiring bar the user already set.
+
+1. Pick the template. If the user keeps premade event-driven campaigns (a
+   role, search or brief whose name says layoff, shutdown or funding
+   distress, such as "Talent Alpha template: layoff"), use the one that
+   matches each signal's `event_type`, one new role or agent per event type.
+   Otherwise ask which tool and which template to copy: an existing role or
+   search in that tool, or a brief the user names (a Talent One sourcing
+   strategy and outreach playbook). Never pick an unnamed template yourself.
+
+**Noon** (Noon connector):
+
+2. For a Noon role template, read `get_role_state` and `get_outbound_sequence`.
+3. Call `create_role` with: `name`, `location` and `target_companies` from the
+   `noon` block; `titles` the template's titles plus `noon.titles`; `yoe`,
+   `non_negotiables` and `nice_to_haves` from the template; `jd` the template's
+   role description followed by `noon.jd_evidence`. Never set
+   `only_source_from_companies`.
+4. Copy the template's outreach with `update_outbound_sequence`. Outreach never
+   mentions the layoff, shutdown or funding event.
+5. Read the role back with `get_role_state`. Report the link, the first
+   candidates, every assumption Noon added (seniority cap, radius, dropped
+   must-haves), the `targets.use_through` date and `exclude_after_create`.
+
+**Juicebox** (Juicebox connector):
+
+2. Read `get_agent_schema` first; its field names win over the `juicebox`
+   block's. If the template is a Juicebox project, read it with `get_project`.
+3. Call `create_agent` with the `juicebox.query`, each `juicebox.filters` entry
+   mapped onto the schema's matching field, and the template's requirements.
+   If the schema has no field for a filter, keep it in the query and say so.
+4. Call `start_sourcing` right away only when the user's request or saved
+   schedule says to auto-source. Otherwise wait until the user has read the
+   agent back and said go. Never start outreach.
+5. Report the agent, any filter the schema could not take, and the
+   `targets.use_through` date.
+
+Then hand over [the tuning steps](../../docs/sourcing-handoff.md#tune-it).
+Noon starts sourcing as soon as the role exists. Never turn on automatic
+contact, never contact candidates and never accept or reject candidates for
+the user. Outreach starts only from a switch the user turns on in the tool.
+Tuning is the user's job in the tool.
 
 ## 3. Deliver
 

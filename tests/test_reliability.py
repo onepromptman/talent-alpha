@@ -137,7 +137,7 @@ def test_funding_extraction_and_date_only_survive_full_build_and_dedupe(batch):
     assert "test roles" in trusted[0]["snippet"]
     result = build(batch)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert not (batch / "noon-targeting.json").exists()
+    assert not (batch / "sourcing-handoff.json").exists()
     content = json.loads((batch / "content.json").read_text())
     assert content["candidates"][0]["age_days"] >= 0
     assert "https://example.com/acme-restructuring" in (batch / "card.html").read_text()
@@ -156,15 +156,21 @@ def test_funding_extraction_and_date_only_survive_full_build_and_dedupe(batch):
     assert json.loads((batch / "new.json").read_text()) == []
 
 
-def test_noon_handoff_uses_checked_company_signal(batch):
+def test_sourcing_handoff_uses_checked_company_signal(batch):
     assert join(batch).returncode == 0
-    result = build(batch, "--noon-handoff")
+    result = build(batch, "--sourcing-handoff")
     assert result.returncode == 0, result.stdout + result.stderr
-    handoff = json.loads((batch / "noon-targeting.json").read_text(encoding="utf-8"))
+    handoff = json.loads((batch / "sourcing-handoff.json").read_text(encoding="utf-8"))
     published = json.loads((batch / "raw.json").read_text())[0]["published_at"]
     expires = datetime.date.fromisoformat(published) + datetime.timedelta(days=7)
+    name = "Test Engineer, Example Co (Talent Alpha: Acme Sensors)"
+    evidence = (
+        f"Acme Sensors: funding distress in Denver, reported {published},"
+        f" use through {expires.isoformat()}."
+        " Source: https://example.com/acme-restructuring"
+    )
     assert handoff == {
-        "schema_version": 1,
+        "schema_version": 3,
         "role": {"title": "Test Engineer", "location": "Denver"},
         "signals": [
             {
@@ -179,21 +185,52 @@ def test_noon_handoff_uses_checked_company_signal(batch):
                 "source_url": "https://example.com/acme-restructuring",
             }
         ],
+        "targets": {
+            "name": name,
+            "titles": ["Test Engineer"],
+            "locations": ["Denver"],
+            "companies": ["Acme Sensors"],
+            "exclude_companies": ["Example Co"],
+            "use_through": expires.isoformat(),
+            "evidence": [evidence],
+        },
+        "noon": {
+            "name": name,
+            "titles": ["Test Engineer"],
+            "location": ["Denver"],
+            "target_companies": ["Acme Sensors"],
+            "exclude_after_create": ["Example Co"],
+            "jd_evidence": [evidence],
+        },
+        "juicebox": {
+            "name": name,
+            "query": "Test Engineer currently at Acme Sensors, near Denver",
+            "filters": {
+                "job_titles": ["Test Engineer"],
+                "current_companies": ["Acme Sensors"],
+                "locations": ["Denver"],
+                "exclude_companies": ["Example Co"],
+            },
+            "evidence": [evidence],
+        },
     }
 
 
 @pytest.mark.parametrize("tiers", [("B", "B"), ("S", "C")])
-def test_noon_handoff_omits_lower_tier_and_held_events(batch, tiers):
+def test_sourcing_handoff_omits_lower_tier_and_held_events(batch, tiers):
     assert join(batch).returncode == 0
     for judge, tier in zip(("advocate", "skeptic"), tiers):
         path = batch / f"{judge}_verdicts.json"
         data = json.loads(path.read_text())
         data["verdicts"][0]["tier"] = tier
         write(path, data)
-    result = build(batch, "--noon-handoff")
+    result = build(batch, "--sourcing-handoff")
     assert result.returncode == 0, result.stdout + result.stderr
-    handoff = json.loads((batch / "noon-targeting.json").read_text(encoding="utf-8"))
+    handoff = json.loads((batch / "sourcing-handoff.json").read_text(encoding="utf-8"))
     assert handoff["signals"] == []
+    assert handoff["targets"] is None
+    assert handoff["noon"] is None
+    assert handoff["juicebox"] is None
 
 
 @pytest.mark.parametrize("company", ["Invented Corporation", "Acme"])
@@ -246,7 +283,7 @@ def test_failed_build_preserves_existing_card_and_state(batch, failure):
     write(batch / "state.json", state)
     before = (batch / "state.json").read_bytes()
     (batch / "card.html").write_text("previous good card", encoding="utf-8")
-    handoff = batch / "noon-targeting.json"
+    handoff = batch / "sourcing-handoff.json"
     handoff.write_text("previous targeting proposal", encoding="utf-8")
     extra = ()
     if failure == "template":
@@ -261,7 +298,7 @@ def test_failed_build_preserves_existing_card_and_state(batch, failure):
                 " 98765 people." if failure == "fabricated-number" else " TBD"
             )
         write(path, data)
-    result = build(batch, "--noon-handoff", *extra)
+    result = build(batch, "--sourcing-handoff", *extra)
     assert result.returncode != 0
     assert (batch / "state.json").read_bytes() == before
     assert (batch / "card.html").read_text() == "previous good card"

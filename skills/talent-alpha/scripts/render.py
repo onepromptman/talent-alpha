@@ -839,8 +839,8 @@ def cmd_verify(args):
 # --------------------------------------------------------------- main
 
 
-def noon_targeting(content, raw):
-    """Export employer signals for review, using the card's checked verdicts."""
+def sourcing_handoff(content, raw):
+    """Export employer signals for Noon and Juicebox, from the card's checked verdicts."""
     signals = []
     for candidate in content["candidates"]:
         if candidate["held"] or candidate["tier"] not in ("S", "A"):
@@ -863,13 +863,99 @@ def noon_targeting(content, raw):
                 "source_url": candidate["source_url"],
             }
         )
+    run = content["run"]
+    targets = shared_targets(run, signals)
     return {
-        "schema_version": 1,
-        "role": {
-            "title": content["run"]["role_title"],
-            "location": content["run"]["role_location"],
-        },
+        "schema_version": 3,
+        "role": {"title": run["role_title"], "location": run["role_location"]},
         "signals": signals,
+        "targets": targets,
+        "noon": noon_fields(targets),
+        "juicebox": juicebox_fields(targets),
+    }
+
+
+def ordered_unique(values):
+    """Non-empty values in first-seen order, compared without case."""
+    seen, out = set(), []
+    for value in values:
+        value = (value or "").strip()
+        if value and value.casefold() not in seen:
+            seen.add(value.casefold())
+            out.append(value)
+    return out
+
+
+def shared_targets(run, signals):
+    """The dimensions Talent Alpha has evidence for, in tool-neutral form.
+
+    Companies, where the events happened, any titles a source named, the user's
+    own company to exclude, and when the signal expires. Years of experience,
+    must-haves, seniority and outreach come from the role or brief the user
+    copies in the sourcing tool, never from here.
+    """
+    if not signals:
+        return None
+    companies = ordered_unique(s["company"] for s in signals)
+    return {
+        "name": f"{run['role_title']}, {run['company_name']} "
+        f"(Talent Alpha: {', '.join(companies)})",
+        "titles": ordered_unique(
+            [run["role_title"]] + [t for s in signals for t in s["reported_titles"]]
+        ),
+        # a bare state code ("CA") would widen a search to the whole state
+        "locations": ordered_unique(
+            [run["role_location"]]
+            + [s["event_location"] for s in signals if len(s["event_location"]) > 2]
+        ),
+        "companies": companies,
+        "exclude_companies": ordered_unique([run["company_name"]]),
+        "use_through": min(s["use_through"] for s in signals),
+        "evidence": [
+            f"{s['company']}: {s['event_type'].replace('_', ' ')}"
+            + (f" in {s['event_location']}" if s["event_location"] else "")
+            + f", reported {s['published_on']}, use through {s['use_through']}."
+            f" Source: {s['source_url']}"
+            for s in signals
+        ],
+    }
+
+
+def noon_fields(targets):
+    """The targets as Noon create_role arguments (exclusions are set after create)."""
+    if targets is None:
+        return None
+    return {
+        "name": targets["name"],
+        "titles": targets["titles"],
+        "location": targets["locations"],
+        "target_companies": targets["companies"],
+        "exclude_after_create": targets["exclude_companies"],
+        "jd_evidence": targets["evidence"],
+    }
+
+
+def juicebox_fields(targets):
+    """The targets as a Juicebox search: a plain-language query plus filters.
+
+    Juicebox searches in natural language first; the filters restate the query
+    so the push step can map them onto whatever create_agent's schema names them.
+    """
+    if targets is None:
+        return None
+    return {
+        "name": targets["name"],
+        "query": (
+            f"{' or '.join(targets['titles'])} currently at "
+            f"{', '.join(targets['companies'])}, near {' or '.join(targets['locations'])}"
+        ),
+        "filters": {
+            "job_titles": targets["titles"],
+            "current_companies": targets["companies"],
+            "locations": targets["locations"],
+            "exclude_companies": targets["exclude_companies"],
+        },
+        "evidence": targets["evidence"],
     }
 
 
@@ -889,8 +975,8 @@ def cmd_build(args):
         args.template,
     ]
     output_paths = [content_path, html_path]
-    if args.noon_handoff:
-        output_paths.append(content_path.with_name("noon-targeting.json"))
+    if args.sourcing_handoff:
+        output_paths.append(content_path.with_name("sourcing-handoff.json"))
     outputs = {path.resolve() for path in output_paths}
     if len(outputs) != len(output_paths) or any(
         Path(p).resolve() in outputs for p in input_paths
@@ -962,10 +1048,10 @@ def cmd_build(args):
         )
         cmd_verify(argparse.Namespace(doc=str(staged_html)))
         staged_outputs = [staged_content, staged_html]
-        if args.noon_handoff:
-            staged_noon = Path(temp) / "noon-targeting.json"
-            dump(staged_noon, noon_targeting(content, raw))
-            staged_outputs.append(staged_noon)
+        if args.sourcing_handoff:
+            staged_handoff = Path(temp) / "sourcing-handoff.json"
+            dump(staged_handoff, sourcing_handoff(content, raw))
+            staged_outputs.append(staged_handoff)
         for staged, output in zip(staged_outputs, output_paths):
             os.replace(staged, output)
     state.cmd_record(
@@ -974,8 +1060,8 @@ def cmd_build(args):
         )
     )
     print(f"build OK: {html_path}; state recorded after validation and verification")
-    if args.noon_handoff:
-        print(f"Noon targeting for review: {output_paths[-1]}")
+    if args.sourcing_handoff:
+        print(f"Sourcing handoff for Noon and Juicebox: {output_paths[-1]}")
 
 
 def config_problems(path):
@@ -1099,9 +1185,11 @@ def main(argv=None):
     b.add_argument("--state", required=True)
     b.add_argument("--html", required=True, help="Final HTML card path.")
     b.add_argument(
+        "--sourcing-handoff",
         "--noon-handoff",
+        dest="sourcing_handoff",
         action="store_true",
-        help="Write a Noon targeting proposal alongside the checked card content.",
+        help="Write a Noon and Juicebox sourcing handoff beside the checked card content.",
     )
     b.add_argument(
         "--template",

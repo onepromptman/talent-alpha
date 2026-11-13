@@ -60,6 +60,31 @@ Each gets its own card and memory, so an event reviewed for one role can still b
 considered for another. Daily runs reuse the saved settings. Your shared profile
 is `onepromptman-profile.md`; saved targets are in `talent-alpha-targets.json`.
 
+## Send the companies to Noon or Juicebox
+
+The card tells you where to look. A sourcing tool finds the people. If you use
+[Noon](https://www.noon.ai) or [Juicebox](https://juicebox.ai), Talent Alpha
+can hand the S and A companies straight to it:
+
+1. **Run with the handoff.** Say `run talent alpha and export the sourcing
+   handoff`. Next to the card you get `sourcing-handoff.json`: the companies,
+   the cities, any job titles the news named, your own company to exclude, and
+   the date each signal goes stale.
+2. **Push.** Say `push it to Noon` (or Juicebox). Claude copies a role or
+   search you already trust, swaps in the new companies, and creates a new
+   role or agent. Your hiring bar and outreach come from that template, never
+   from the news.
+3. **Tune it.** You do need to. Check the first results, accept or reject with
+   reasons, and loosen or tighten one filter at a time.
+
+**Set up campaigns once.** Most teams keep one premade campaign per kind of
+news (layoff, shutdown, funding distress). Claude picks the matching one, the
+tool sources on its own, and you only review if you want to. Outreach starts
+only when you switch it on in the tool.
+
+The [sourcing handoff guide](docs/sourcing-handoff.md) has the field map for
+both tools, the template setup and the tuning steps.
+
 ## See it before you install
 
 Download this repository as a ZIP, unzip it, and open `samples/01_Overnight_Card_SAMPLE.html` in your browser. It is a fictional card and needs no account.
@@ -79,6 +104,8 @@ flowchart LR
 
 - Your profile and the news go to Anthropic (in your Claude session, or by API in n8n).
   n8n also pulls from WARN Firehose and Perplexity and emails the card to your Gmail.
+- If you push to Noon or Juicebox, the companies, cities and source links go to that
+  tool under your own account.
 - Keep employee and candidate names out of your profile: they are personal data.
 - The profile, state file and cards stay in your working folder; delete them to delete
   the data. In n8n, clear the Data Table and old executions.
@@ -108,8 +135,6 @@ click **Execute Workflow**. It uses sample signals, sends no email and writes no
 The full setup is [docs/setup.md](docs/setup.md), and [CONNECTORS.md](CONNECTORS.md)
 explains the tradeoff between the two sources.
 
-Use the [Noon targeting pilot](docs/noon-targeting.md) to take company signals
-from a checked card into a Noon sourcing review.
 
 <details>
 <summary><b>n8n troubleshooting and upgrades</b></summary>

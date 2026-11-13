@@ -5,6 +5,10 @@ GitHub release ZIP or live account acceptance has been published.
 
 ## [Unreleased]
 
+- Sourcing handoff: `--sourcing-handoff` writes `sourcing-handoff.json` beside the card, mapping
+  shown S and A companies onto a Noon role and a Juicebox search. A push step copies a
+  template the user picks (or a premade campaign per event type), never turns on outreach,
+  and hands over tuning steps. Guide: docs/sourcing-handoff.md.
 - The advocate and skeptic briefs state the `titles` rule as an instruction: list only
   functions or teams the source itself names, else an empty list. A live run on 2026-11-11
   copied the scanner's guesses into `titles` on 5 of 6 candidates.
