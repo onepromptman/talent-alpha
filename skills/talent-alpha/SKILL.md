@@ -248,6 +248,12 @@ Route a failure back to the producer with its diagnostic. Do not bypass a failed
 build by calling the low-level render or state-record commands. Those commands
 remain available for development and the frozen eval, not as a production shortcut.
 
+When the user requests a Noon handoff, or the saved schedule explicitly asks
+for one, add `--noon-handoff` to the build command. Report the path to
+`noon-targeting.json` next to the checked card. An empty `signals` list means
+no S or A signal qualified for the handoff. The scheduled run ends with the
+proposal. Use [the Noon pilot guide](../../docs/noon-targeting.md) for applying it.
+
 ## 3. Deliver
 
 There is no email step in-session (the n8n workflow emails the card; this

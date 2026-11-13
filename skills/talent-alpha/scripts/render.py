@@ -839,6 +839,40 @@ def cmd_verify(args):
 # --------------------------------------------------------------- main
 
 
+def noon_targeting(content, raw):
+    """Export employer signals for review, using the card's checked verdicts."""
+    signals = []
+    for candidate in content["candidates"]:
+        if candidate["held"] or candidate["tier"] not in ("S", "A"):
+            continue
+        event = raw[candidate["id"]]
+        published = parse_timestamp(event["published_at"]).date()
+        signals.append(
+            {
+                "event_id": candidate["id"],
+                "company": candidate["company"],
+                "event_type": candidate["event_type"],
+                "event_location": candidate["location"],
+                "reported_titles": candidate["titles"],
+                "tier": candidate["tier"],
+                "published_on": published.isoformat(),
+                "use_through": (
+                    published
+                    + datetime.timedelta(days=WINDOW_DAYS[event["event_type"]])
+                ).isoformat(),
+                "source_url": candidate["source_url"],
+            }
+        )
+    return {
+        "schema_version": 1,
+        "role": {
+            "title": content["run"]["role_title"],
+            "location": content["run"]["role_location"],
+        },
+        "signals": signals,
+    }
+
+
 def cmd_build(args):
     """Publish a checked local card, then record state. Failures leave state untouched."""
     import state
@@ -854,12 +888,15 @@ def cmd_build(args):
         args.state,
         args.template,
     ]
-    outputs = [content_path.resolve(), html_path.resolve()]
-    if outputs[0] == outputs[1] or any(
+    output_paths = [content_path, html_path]
+    if args.noon_handoff:
+        output_paths.append(content_path.with_name("noon-targeting.json"))
+    outputs = {path.resolve() for path in output_paths}
+    if len(outputs) != len(output_paths) or any(
         Path(p).resolve() in outputs for p in input_paths
     ):
         raise ValueError(
-            "card outputs must be separate from each other and from input/state files"
+            "outputs must be separate from each other and from input/state files"
         )
     raw = index_unique(load(args.raw), "event_id", "raw events")
     for candidate in load(args.trusted):
@@ -924,14 +961,21 @@ def cmd_build(args):
             )
         )
         cmd_verify(argparse.Namespace(doc=str(staged_html)))
-        os.replace(staged_content, content_path)
-        os.replace(staged_html, html_path)
+        staged_outputs = [staged_content, staged_html]
+        if args.noon_handoff:
+            staged_noon = Path(temp) / "noon-targeting.json"
+            dump(staged_noon, noon_targeting(content, raw))
+            staged_outputs.append(staged_noon)
+        for staged, output in zip(staged_outputs, output_paths):
+            os.replace(staged, output)
     state.cmd_record(
         argparse.Namespace(
             candidates=str(content_path), state=args.state, max_age_days=MAX_AGE_DAYS
         )
     )
     print(f"build OK: {html_path}; state recorded after validation and verification")
+    if args.noon_handoff:
+        print(f"Noon targeting for review: {output_paths[-1]}")
 
 
 def config_problems(path):
@@ -1054,6 +1098,11 @@ def main(argv=None):
     )
     b.add_argument("--state", required=True)
     b.add_argument("--html", required=True, help="Final HTML card path.")
+    b.add_argument(
+        "--noon-handoff",
+        action="store_true",
+        help="Write a Noon targeting proposal alongside the checked card content.",
+    )
     b.add_argument(
         "--template",
         default=str(

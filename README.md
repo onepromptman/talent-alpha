@@ -108,6 +108,9 @@ click **Execute Workflow**. It uses sample signals, sends no email and writes no
 The full setup is [docs/setup.md](docs/setup.md), and [CONNECTORS.md](CONNECTORS.md)
 explains the tradeoff between the two sources.
 
+Use the [Noon targeting pilot](docs/noon-targeting.md) to take company signals
+from a checked card into a Noon sourcing review.
+
 <details>
 <summary><b>n8n troubleshooting and upgrades</b></summary>
 

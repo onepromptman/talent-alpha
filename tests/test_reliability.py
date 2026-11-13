@@ -137,6 +137,7 @@ def test_funding_extraction_and_date_only_survive_full_build_and_dedupe(batch):
     assert "test roles" in trusted[0]["snippet"]
     result = build(batch)
     assert result.returncode == 0, result.stdout + result.stderr
+    assert not (batch / "noon-targeting.json").exists()
     content = json.loads((batch / "content.json").read_text())
     assert content["candidates"][0]["age_days"] >= 0
     assert "https://example.com/acme-restructuring" in (batch / "card.html").read_text()
@@ -153,6 +154,46 @@ def test_funding_extraction_and_date_only_survive_full_build_and_dedupe(batch):
     )
     assert result.returncode == 0, result.stderr
     assert json.loads((batch / "new.json").read_text()) == []
+
+
+def test_noon_handoff_uses_checked_company_signal(batch):
+    assert join(batch).returncode == 0
+    result = build(batch, "--noon-handoff")
+    assert result.returncode == 0, result.stdout + result.stderr
+    handoff = json.loads((batch / "noon-targeting.json").read_text(encoding="utf-8"))
+    published = json.loads((batch / "raw.json").read_text())[0]["published_at"]
+    expires = datetime.date.fromisoformat(published) + datetime.timedelta(days=7)
+    assert handoff == {
+        "schema_version": 1,
+        "role": {"title": "Test Engineer", "location": "Denver"},
+        "signals": [
+            {
+                "event_id": "fund-test",
+                "company": "Acme Sensors",
+                "event_type": "funding_distress",
+                "event_location": "Denver",
+                "reported_titles": ["Test Engineer"],
+                "tier": "A",
+                "published_on": published,
+                "use_through": expires.isoformat(),
+                "source_url": "https://example.com/acme-restructuring",
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize("tiers", [("B", "B"), ("S", "C")])
+def test_noon_handoff_omits_lower_tier_and_held_events(batch, tiers):
+    assert join(batch).returncode == 0
+    for judge, tier in zip(("advocate", "skeptic"), tiers):
+        path = batch / f"{judge}_verdicts.json"
+        data = json.loads(path.read_text())
+        data["verdicts"][0]["tier"] = tier
+        write(path, data)
+    result = build(batch, "--noon-handoff")
+    assert result.returncode == 0, result.stdout + result.stderr
+    handoff = json.loads((batch / "noon-targeting.json").read_text(encoding="utf-8"))
+    assert handoff["signals"] == []
 
 
 @pytest.mark.parametrize("company", ["Invented Corporation", "Acme"])
@@ -205,6 +246,8 @@ def test_failed_build_preserves_existing_card_and_state(batch, failure):
     write(batch / "state.json", state)
     before = (batch / "state.json").read_bytes()
     (batch / "card.html").write_text("previous good card", encoding="utf-8")
+    handoff = batch / "noon-targeting.json"
+    handoff.write_text("previous targeting proposal", encoding="utf-8")
     extra = ()
     if failure == "template":
         extra = ("--template", batch / "missing.html")
@@ -218,10 +261,11 @@ def test_failed_build_preserves_existing_card_and_state(batch, failure):
                 " 98765 people." if failure == "fabricated-number" else " TBD"
             )
         write(path, data)
-    result = build(batch, *extra)
+    result = build(batch, "--noon-handoff", *extra)
     assert result.returncode != 0
     assert (batch / "state.json").read_bytes() == before
     assert (batch / "card.html").read_text() == "previous good card"
+    assert handoff.read_text(encoding="utf-8") == "previous targeting proposal"
     assert not (batch / "content.json").exists()
     assert not list(batch.glob(".talent-alpha-build-*"))
 
