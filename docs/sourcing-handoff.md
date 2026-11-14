@@ -40,48 +40,49 @@ the query.
 A template is an existing role or search in the tool, or a brief such as a
 Talent One sourcing strategy and outreach playbook for the same job.
 
-## Set up event-driven campaigns once
+## Automate it with campaign templates
 
-The handoff works best when each kind of news already has a campaign waiting.
-Make one template per event type you care about, in Noon or Juicebox:
+To let a scheduled run push on its own, make one template per kind of news, in
+Noon or Juicebox, with these exact names:
 
-- **Talent Alpha template: layoff**
-- **Talent Alpha template: shutdown**
-- **Talent Alpha template: funding distress**
+- `Talent Alpha template: layoff`
+- `Talent Alpha template: shutdown`
+- `Talent Alpha template: funding distress`
 
-Each template holds your hiring bar (titles, years, must-haves) and outreach
-written for that moment. Outreach never names the event: "if you are weighing
-a next step" reads well; "sorry about your layoff" does not. Claude matches
-each signal to its template by name and creates one new role or agent per
-event type. Without templates, Claude asks which role to copy every time.
+Each holds your titles, years, must-haves and outreach for that moment.
+Outreach never names the event: "if you are weighing a next step" reads well;
+"sorry about your layoff" does not. In Noon, pause the template roles so they
+do not source on their own. Then add `export the sourcing handoff and push it`
+to your scheduled run.
+
+Claude matches each signal to its template by name and creates one new role or
+agent per event type. A signal with no matching template is left in the file
+for you. Without templates, Claude asks which role to copy every time you push.
 
 ## Push it
 
-Connect the tool first: [Noon's MCP setup](https://www.noon.ai/docs/mcp) or
-[Juicebox's MCP setup](https://docs.juicebox.ai/juicebox-mcp). Then ask Claude
-to push. Claude creates a new Noon role or Juicebox agent from the matching
+Connect the tool first with [Noon's MCP setup](https://www.noon.ai/docs/mcp) or
+[Juicebox's MCP setup](https://docs.juicebox.ai/juicebox-mcp), using an account
+you own or are authorized to use. Then ask Claude to push. Claude creates a new Noon role or Juicebox agent from the matching
 template and reads it back.
 
 - **Noon:** sourcing starts as soon as the role exists. Every push is a new
   role, because the connector cannot edit an existing role's companies.
   Auto-contact stays off.
-- **Juicebox:** the agent is created. It starts sourcing right away only when
-  your request or saved schedule says "auto-source"; otherwise it waits for
+- **Juicebox:** the agent is created. It starts sourcing right away when you
+  push from a campaign template or say "auto-source"; otherwise it waits for
   your go.
 
-**Auto-source or review first?** Sourcing (finding people) can run on its own.
-Contact cannot, unless you choose it: Claude never turns on outreach. If you
-want hands-off campaigns, turn on auto-contact yourself on each new role once
-the tuning below looks right, with a daily limit. If you want to review every
-person first, leave it off and accept or reject in the tool.
+Claude never turns on outreach. For hands-off campaigns, turn on auto-contact
+yourself once tuning looks right, with a daily limit. To review each person
+first, leave it off.
 
 ## Tune it
 
-You do need to tune. A new role starts from your template and a news signal,
-and the first results show how the tool read them. Plan on a few minutes the
-first time per template; later pushes from the same template need much less.
-Do these in the tool, in order. Change one thing, then look at the results
-again.
+Every new role or agent needs a short check before you rely on it. The first
+results show how the tool read your template and the new companies. The first
+pass from a template takes a few minutes; later pushes from it need much less.
+Work in the tool, in order, one change at a time.
 
 1. **Check the setup.** Confirm the companies, locations, titles, seniority and
    must-haves. In Noon, add your own company under excluded companies.

@@ -2,7 +2,7 @@
 
 # Talent Alpha
 
-**For recruiters and sourcers:** a short, ranked card of companies with fresh layoff or funding news, the job functions likely affected, and a line to open with.
+**For recruiters and sourcers:** a short, ranked card of companies with fresh layoff or funding news, any job functions the news names, and a line to open with.
 
 [![Version](https://img.shields.io/badge/version-1.5.0-black)](CHANGELOG.md)
 [![Runs in](https://img.shields.io/badge/runs%20in-Claude%20Code%20%7C%20Cowork%20%7C%20n8n-orange)](#run-it-every-night-without-you)
@@ -24,7 +24,7 @@ Agent pack (Claude plugin) and No-code (n8n) · No coding, some setup · Live ·
 - **A reason and an opener.** Each company comes with why now, source links and a draft first line.
 - **Only what is new.** Run it again another day and it shows only events you have not seen.
 
-Talent Alpha never contacts candidates. The card names companies and job functions, never people. You decide who to reach out to.
+Talent Alpha never contacts candidates. The card names companies, never people. You decide who to reach out to.
 
 ## Get started
 
@@ -62,28 +62,43 @@ is `onepromptman-profile.md`; saved targets are in `talent-alpha-targets.json`.
 
 ## Send the companies to Noon or Juicebox
 
-The card tells you where to look. A sourcing tool finds the people. If you use
-[Noon](https://www.noon.ai) or [Juicebox](https://juicebox.ai), Talent Alpha
-can hand the S and A companies straight to it:
+The card shows where to look. A sourcing tool finds the people. With
+[Noon](https://www.noon.ai) or [Juicebox](https://juicebox.ai) connected to
+Claude, Talent Alpha hands over the S and A companies. New on `main`; the kit
+ZIP gets it in its next release.
 
-1. **Run with the handoff.** Say `run talent alpha and export the sourcing
-   handoff`. Next to the card you get `sourcing-handoff.json`: the companies,
-   the cities, any job titles the news named, your own company to exclude, and
-   the date each signal goes stale.
+1. **Export.** Say `run talent alpha and export the sourcing handoff`. Beside
+   the card you get `sourcing-handoff.json`: the companies, their cities, any
+   job titles the news named, your own company to exclude, and the date each
+   signal goes stale.
 2. **Push.** Say `push it to Noon` (or Juicebox). Claude copies a role or
-   search you already trust, swaps in the new companies, and creates a new
-   role or agent. Your hiring bar and outreach come from that template, never
-   from the news.
-3. **Tune it.** You do need to. Check the first results, accept or reject with
-   reasons, and loosen or tighten one filter at a time.
+   search you already use, swaps in the new companies, and creates a new one.
+   Your requirements and outreach stay as you wrote them.
+3. **Tune the first results.** The first candidates show how the tool read the
+   role. Accept or reject them with reasons and adjust one filter at a time
+   until the list looks right.
 
-**Set up campaigns once.** Most teams keep one premade campaign per kind of
-news (layoff, shutdown, funding distress). Claude picks the matching one, the
-tool sources on its own, and you only review if you want to. Outreach starts
-only when you switch it on in the tool.
+**To automate sourcing:**
 
-The [sourcing handoff guide](docs/sourcing-handoff.md) has the field map for
-both tools, the template setup and the tuning steps.
+1. In Noon or Juicebox, make one campaign per kind of news, named
+   `Talent Alpha template: layoff`, `Talent Alpha template: shutdown` and
+   `Talent Alpha template: funding distress`. Each holds your titles,
+   requirements and outreach. In Noon, pause them so they do not source on
+   their own.
+2. Tune each campaign once, as in step 3.
+3. Add `export the sourcing handoff and push it` to your scheduled Talent Alpha
+   run. Claude matches each signal to its campaign and the tool sources on its
+   own. Push once by hand first: scheduled pushes are not yet tested end to end.
+
+Outreach stays off until you turn on auto-contact in the tool. Leave it off to
+review each person first.
+
+**Another data API?** `sourcing-handoff.json` is plain JSON. A script or n8n
+flow can send the same companies, titles and locations to a search or
+people-data API you already use, such as Bright Data, LeadMagic, Parallel
+FindAll or Tavily.
+
+Field map, campaign setup and tuning steps: [sourcing handoff guide](docs/sourcing-handoff.md).
 
 ## See it before you install
 
@@ -105,7 +120,7 @@ flowchart LR
 - Your profile and the news go to Anthropic (in your Claude session, or by API in n8n).
   n8n also pulls from WARN Firehose and Perplexity and emails the card to your Gmail.
 - If you push to Noon or Juicebox, the companies, cities and source links go to that
-  tool under your own account.
+  tool. Use an account you own or are authorized to use, under that tool's terms.
 - Keep employee and candidate names out of your profile: they are personal data.
 - The profile, state file and cards stay in your working folder; delete them to delete
   the data. In n8n, clear the Data Table and old executions.
