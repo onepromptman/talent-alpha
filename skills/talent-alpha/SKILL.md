@@ -252,9 +252,11 @@ When the user requests a sourcing handoff (Noon or Juicebox), or the saved
 schedule explicitly asks for one, add `--sourcing-handoff` to the build command
 (`--noon-handoff` still works). Report the path to `sourcing-handoff.json` next
 to the checked card. Null `targets` means no S or A signal qualified. A
-scheduled run ends with the file and never pushes.
+scheduled run pushes only when its saved instructions say to push, and then
+only to campaign templates (step 1 below); it never asks and never guesses a
+template.
 
-### 2.7 Push to Noon or Juicebox (only when the user asks in this session)
+### 2.7 Push to Noon or Juicebox (when the user or the saved schedule asks)
 
 Talent Alpha supplies only `targets`: companies, event cities, source-named
 titles, the user's own company to exclude, the expiry date and the evidence.
@@ -262,13 +264,15 @@ The `noon` and `juicebox` blocks are the same targets in each tool's shape.
 Everything else is copied from a template the user picks, so the search keeps
 the hiring bar the user already set.
 
-1. Pick the template. If the user keeps premade event-driven campaigns (a
-   role, search or brief whose name says layoff, shutdown or funding
-   distress, such as "Talent Alpha template: layoff"), use the one that
-   matches each signal's `event_type`, one new role or agent per event type.
-   Otherwise ask which tool and which template to copy: an existing role or
-   search in that tool, or a brief the user names (a Talent One sourcing
-   strategy and outreach playbook). Never pick an unnamed template yourself.
+1. Pick the template. Campaign templates are roles or searches named
+   `Talent Alpha template: layoff`, `Talent Alpha template: shutdown` or
+   `Talent Alpha template: funding distress`. When they exist, use the one
+   matching each signal's `event_type`, one new role or agent per event type,
+   and leave a signal with no match in the file. In an interactive session
+   with no templates, ask which tool and which template to copy: an existing
+   role or search, or a brief the user names (a Talent One sourcing strategy
+   and outreach playbook). On a scheduled run with no templates, stop at the
+   file. Never pick an unnamed template yourself.
 
 **Noon** (Noon connector):
 
@@ -291,9 +295,9 @@ the hiring bar the user already set.
 3. Call `create_agent` with the `juicebox.query`, each `juicebox.filters` entry
    mapped onto the schema's matching field, and the template's requirements.
    If the schema has no field for a filter, keep it in the query and say so.
-4. Call `start_sourcing` right away only when the user's request or saved
-   schedule says to auto-source. Otherwise wait until the user has read the
-   agent back and said go. Never start outreach.
+4. Call `start_sourcing` right away when the agent came from a campaign
+   template or the user said to auto-source. Otherwise wait until the user has
+   read the agent back and said go. Never start outreach.
 5. Report the agent, any filter the schema could not take, and the
    `targets.use_through` date.
 
